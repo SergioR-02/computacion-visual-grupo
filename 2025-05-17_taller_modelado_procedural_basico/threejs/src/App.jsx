@@ -11,13 +11,13 @@ export default function App() {
       <ambientLight />
       <pointLight position={[10, 10, 10]} />
 
-      <CubeGrid />
-      <WavyPlane />
-{/*      
+      {/* <CubeGrid /> */}
+      {/* <WavyPlane /> */}
+     
       <OrbitControls />
       <ambientLight />
       <pointLight position={[10, 10, 10]} />
-      <FractalTree /> */}
+      <FractalTree />
     </Canvas>
   )
 }

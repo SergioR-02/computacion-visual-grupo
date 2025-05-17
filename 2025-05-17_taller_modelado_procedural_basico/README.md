@@ -99,13 +99,25 @@ useFrame(() => {
 ```
 
 
-📊 Resultados Visuales
+## 📊 Resultados Visuales
+
+
 Aquí se mostrarán los resultados visuales de las implementaciones realizadas en el taller, en el que se trabajaron las formas, cube grid, fractal tree y way PLane:
 
 🌐 React Three Fiber
-🎞️ cube grid, fractal tree y way PLane GIFT
 
-![Resultado Three Fiber](resultados/PythonResultado.gif)
+## 🎞️ Cube gridGIFT
+
+![Resultado Cube](resultados/cube%20grid.gif)
+
+## 🎞️Fractal tree GIFT
+
+![Resultado tree](resultados/fractaltree.gif)
+
+## 🎞️Way PLane GIFT
+
+![Resultado way](resultados/wayplane.gif)
+
 
 🧩 Prompts Usados
 
