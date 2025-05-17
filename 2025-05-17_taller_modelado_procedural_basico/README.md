@@ -121,9 +121,13 @@ Aquí se mostrarán los resultados visuales de las implementaciones realizadas e
 
 🧩 Prompts Usados
 
+
 "Genera una cuadrícula de cajas con React Three Fiber usando map() y posición"
+
 "Crea una esfera 3D cuyos vértices se muevan en tiempo real con useFrame"
+
 "Modela un árbol fractal recursivo usando geometrías básicas y rotación"
+
 
 💬 Reflexión Final
 
