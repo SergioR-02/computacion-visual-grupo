@@ -23,6 +23,9 @@ Lista de conceptos clave aplicados en el taller:
 - Visualización comparativa con `matplotlib`
 - Transformaciones de color en NumPy y OpenCV
 - Normalización y visualización de canales individuales
+- Programación de shaders con GLSL
+- Aplicación de materiales y texturas en Three.js
+- Uso de interfaces interactivas con Leva UI
 
 ---
 
@@ -35,6 +38,9 @@ Especifica los entornos usados:
   - `numpy`
   - `matplotlib`
 - Jupyter Notebook (compatible con Google Colab)
+- Three.js / React Three Fiber (visualización 3D)
+- Leva UI (interfaz de usuario para parámetros en tiempo real)
+- GLSL (Shader Language) (programación de filtros visuales)
 
 ---
 
@@ -43,6 +49,8 @@ Especifica los entornos usados:
 2025-04-28_taller_construyendo_mundo_3d/
 ├── python/              # Implentacion python/
 ├── threejs/             # Implentacion react usando threejs/
+│   ├── components/           # SceneCanvas.jsx, ColorControls.jsx
+│   └── public/               # Textura por defecto
 ├── datos/               # Imagen base utilizada
 ├── resultados/          # Comparaciones y GIFs generados
 ├── README.md
@@ -62,8 +70,13 @@ Explica el proceso:
 6. Visualización comparativa de todos los efectos.
 
 #### 🌐 React.js
-
-
+1. Creación de escena en React Three.js con geometrías básicas (cubos, esferas).
+2. Aplicación de colores dinámicos mediante controles interactivos.
+3. Implementación de shaders personalizados para simular:
+   - Daltonismo (matriz lineal)
+   - Escala de grises (luminancia perceptual)
+4. Uso de texturas externas aplicadas a materiales.
+5. Integración de Leva UI para seleccionar filtros y texturas.
 
 ###  🔹 Código relevante
 
@@ -105,9 +118,30 @@ plt.show()
 
 ### 🌐 React Three Fiber (App.jsx)
 
+Este shader personalizado aplica un filtro visual al plano inferior de la escena. Se basa en un uniform llamado uFilterType, que permite alternar entre distintos tipos de simulaciones:
+- 0: Sin filtro (color original).
+- 1: Daltonismo simulado (tipo protanopía aproximado mediante mezcla lineal de canales rojo y verde).
+- 2: Escala de grises, usando luminancia perceptual mediante una ponderación estándar (0.299 R, 0.587 G, 0.114 B).
 
 ```jsx
+uniform int uFilterType;
+varying vec2 vUv;
 
+vec3 applyFilter(vec3 color) {
+  if (uFilterType == 1) {
+    return vec3(color.r * 0.566 + color.g * 0.433, color.r * 0.558 + color.g * 0.442, color.b);
+  } else if (uFilterType == 2) {
+    float gray = dot(color, vec3(0.299, 0.587, 0.114));
+    return vec3(gray);
+  }
+  return color;
+}
+
+void main() {
+  vec3 baseColor = vec3(vUv, 1.0);  // Color generado desde coordenadas UV
+  vec3 filtered = applyFilter(baseColor);
+  gl_FragColor = vec4(filtered, 1.0);
+}
 ```
 
 
@@ -115,12 +149,15 @@ plt.show()
 ### 🐍 Python   
 
 #### 🎞️ RGB.
+RGB (Rojo, Verde, Azul): Es el modelo estándar para pantallas digitales. Representa los colores mediante la combinación aditiva de estos tres canales. Es intuitivo pero no perceptualmente uniforme, es decir, cambios iguales en valores RGB no siempre se traducen en cambios perceptuales iguales.
 ![Resultado Python](resultados/RGB.png)
 
 #### 🎞️ HSV
+HSV (Matiz, Saturación, Valor): Este modelo separa la información del color en componentes más cercanos a la percepción humana: el matiz (tono), la saturación (intensidad del color) y el valor (brillo). Facilita manipular y entender cambios como tono o brillo de forma más natural.
 ![Resultado Python](resultados/HSV.png)
 
 #### 🎞️ L* a* b*
+Modelo perceptualmente uniforme que intenta que la distancia entre colores refleje la diferencia visual percibida. L* representa la luminosidad, mientras que a* y b* representan los ejes verde-rojo y azul-amarillo respectivamente. Es muy útil en procesamiento de imagen y corrección de color avanzada.
 ![Resultado Python](resultados/Canales.png)
 
 #### 📊 Comparación de transformaciones
@@ -149,5 +186,6 @@ plt.show()
 💬 Reflexión Final  
 
 Este taller nos permitió profundizar en la relación entre percepción visual humana y representaciones digitales de color. Aprendí cómo distintas representaciones (HSV, Lab) separan componentes del color útiles para manipulación visual, segmentación o simulación. Visualizar cada canal ayudó a comprender cómo cada dimensión afecta la percepción global.
+Ademas, me permitió profundizar en cómo los modelos de color afectan la percepción visual en contextos gráficos. Fue particularmente interesante trabajar con shaders, ya que ofrecen un gran control sobre cómo se representa el color a nivel de píxel, y permiten simular condiciones visuales como el daltonismo o la visión en escala de grises.
 
-La parte más interesante fue simular deficiencias visuales y observar cómo una imagen puede perder distinciones críticas. También fue útil aprender cómo ajustar filtros para lograr efectos visuales cálidos o fríos de manera precisa. En futuros proyectos, aplicaría estos conceptos para mejorar la accesibilidad de interfaces visuales o generar transformaciones más perceptuales en procesamiento de imágenes y videojuegos.
+El uso de una interfaz como Leva facilitó la experimentación en tiempo real y la comparación directa de resultados. La parte más interesante fue simular deficiencias visuales y observar cómo una imagen puede perder distinciones críticas. También fue útil aprender cómo ajustar filtros para lograr efectos visuales cálidos o fríos de manera precisa. En futuros proyectos, aplicaría estos conceptos para mejorar la accesibilidad de interfaces visuales o generar transformaciones más perceptuales en procesamiento de imágenes y videojuegos.
