@@ -144,6 +144,27 @@ void main() {
 }
 ```
 
+Aquí se define una interfaz gráfica (UI) usando la biblioteca leva, que permite modificar en tiempo real el color de los objetos, aplicar filtros visuales y elegir entre texturas cargadas desde URLs. Esta interacción inmediata es fundamental para explorar visualmente las diferencias entre modelos de color o condiciones de visión simuladas, y fomenta la comprensión práctica de los efectos.
+```jsx
+const { color, filter, texture } = useControls({
+  color: "#00aaff",
+  filter: {
+    options: {
+      Ninguno: 0,
+      Daltonismo: 1,
+      EscalaGrises: 2
+    }
+  },
+  texture: {
+    options: {
+      Ninguna: "none",
+      UV: "https://threejs.org/examples/textures/uv_grid_opengl.jpg",
+      Checker: "https://threejs.org/examples/textures/checker.png",
+      Wood: "https://threejs.org/examples/textures/brick_diffuse.jpg"
+    }
+  }
+});
+```
 
 ## 📊 Resultados Visuales
 ### 🐍 Python   
@@ -169,7 +190,8 @@ Modelo perceptualmente uniforme que intenta que la distancia entre colores refle
 
 ### 🌐 React  
 
-
+#### 🎞️ Proceso completo en ejecución (GIF)
+![Resultado React](resultados/ReactResultado.gif)
 
 
 ---
@@ -180,6 +202,9 @@ Modelo perceptualmente uniforme que intenta que la distancia entre colores refle
 - "Simula daltonismo tipo protanopía con matrices de transformación de color"
 - "Aplica un filtro cálido y otro frío a una imagen RGB usando NumPy y OpenCV"
 - "Genera una comparación visual entre canales HSV y Lab"
+- "¿Cómo puedo modificar un ShaderMaterial en Three.js para simular visión en blanco y negro?"
+- "Recomiéndame texturas libres para usar en una escena de Three.js que ayuden a comparar modelos de color"
+- "Implementa un selector de textura y color con Leva para React Three Fiber"
 
 ---
 
