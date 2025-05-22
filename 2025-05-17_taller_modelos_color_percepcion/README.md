@@ -9,6 +9,7 @@
 ## 🎯 Objetivo del Taller
 
 Investigar cómo los seres humanos perciben el color y cómo esta percepción puede ser representada computacionalmente mediante diferentes modelos de color (RGB, HSV, CIE Lab). Además, se aplicaron transformaciones visuales que simulan condiciones especiales como daltonismo o ambientes de baja iluminación para estudiar su impacto perceptual y funcional.
+
 ---
 
 ## 🧠 Conceptos Aprendidos
@@ -184,7 +185,7 @@ Modelo perceptualmente uniforme que intenta que la distancia entre colores refle
 #### 📊 Comparación de transformaciones
 ![Resultado Python](resultados/Transformaciones.png)
 
-#### 🎞️ Proceso completo en ejecución (GIF)
+#### 🎞️ Proceso completo en ejecución Python(GIF)
 ![Resultado Python](resultados/PythonResultado.gif)
 
 
