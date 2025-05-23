@@ -180,35 +180,3 @@ Este taller me permitió profundizar en el **renderizado 3D en tiempo real** apl
 La parte más interesante fue integrar **texturas dinámicas de video** con **Three.js**, lo que implicó manejar el ciclo de vida de elementos HTML video y sincronizarlos con el renderizado WebGL. También fue desafiante crear una **interfaz de usuario no intrusiva** que permitiera alternar entre modo de exploración y modo inmersivo completo.
 
 Para futuros proyectos, aplicaría estos conceptos en **experiencias VR/AR**, **recorridos virtuales interactivos** y **visualización de datos en entornos 3D**. La base técnica establecida es sólida para expandir hacia **realidad virtual** usando WebXR o **aplicaciones móviles** con tecnologías híbridas.
-
----
-
-## 👥 Contribuciones Grupales
-
-**Implementación individual completa:**
-
-```markdown
-- Configuré el entorno React + Three.js con Vite y dependencias modernas
-- Implementé la geometría esférica invertida con mapeo de texturas equirectangulares
-- Desarrollé el sistema de navegación con OrbitControls y múltiples escenas
-- Creé la interfaz de usuario con controles de teclado y modo inmersivo
-- Integré la funcionalidad de video 360° con texturas dinámicas
-- Optimicé la experiencia de usuario con transiciones suaves y feedback visual
-- Generé la documentación completa y evidencias visuales (GIF)
-```
-
----
-
-## ✅ Checklist de Entrega
-
-- [x] Carpeta `2025-05-22_taller_imagenes_video_360_unity_threejs`
-- [x] Código limpio y funcional con React 19 + Three.js v0.170
-- [x] GIF incluido mostrando navegación 360° completa (`resultados.gif`)
-- [x] 6 imágenes panorámicas integradas y funcionales
-- [x] Video 360° implementado con controles de reproducción
-- [x] Interfaz ocultable y controles de teclado
-- [x] README completo con documentación técnica
-- [x] Estructura de proyecto organizada y documentada
-- [x] Implementación inmersiva navegable con OrbitControls
-
----
