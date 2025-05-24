@@ -259,6 +259,7 @@ detector.run()
 | Normal | Efectos y colores dinámicos | 
 | Juego | Atrapar objetivos con puntuación | 
 | Arte | Dibujo libre con gestos | 
+
 ![Resultado tree](resultados/Demovisual.gif)
 
 ---
