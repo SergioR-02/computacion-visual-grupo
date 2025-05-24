@@ -108,37 +108,58 @@ const ParticleSystem: React.FC<ParticleSystemProps> = ({
     const sizes = new Float32Array(explosionParticleCount);
     const lifetimes = new Float32Array(explosionParticleCount);
     const originalPositions = new Float32Array(explosionParticleCount * 3);
+    const assumedSphereRadius = 1.0; // Assume sphere radius is 1.0 for particle origin
 
     for (let i = 0; i < explosionParticleCount; i++) {
-      // Posición inicial en el punto de explosión con pequeña variación
-      const offsetX = (Math.random() - 0.5) * 0.3;
-      const offsetY = (Math.random() - 0.5) * 0.3;
-      const offsetZ = (Math.random() - 0.5) * 0.3;
+      // 1. Posición inicial en la superficie de la esfera de explosión
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
 
-      positions[i * 3] = explosionPosition[0] + offsetX;
-      positions[i * 3 + 1] = explosionPosition[1] + offsetY;
-      positions[i * 3 + 2] = explosionPosition[2] + offsetZ;
+      const x =
+        explosionPosition[0] +
+        assumedSphereRadius * Math.sin(phi) * Math.cos(theta);
+      const y =
+        explosionPosition[1] +
+        assumedSphereRadius * Math.sin(phi) * Math.sin(theta);
+      const z = explosionPosition[2] + assumedSphereRadius * Math.cos(phi);
+
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
 
       // Guardar posiciones originales
-      originalPositions[i * 3] = positions[i * 3];
-      originalPositions[i * 3 + 1] = positions[i * 3 + 1];
-      originalPositions[i * 3 + 2] = positions[i * 3 + 2];
+      originalPositions[i * 3] = x;
+      originalPositions[i * 3 + 1] = y;
+      originalPositions[i * 3 + 2] = z;
 
-      // Velocidades radiales de explosión mejoradas
-      const direction = new THREE.Vector3(
+      // 2. Velocidades radiales mejoradas (desde el centro de la explosión)
+      const radialDirection = new THREE.Vector3(
+        x - explosionPosition[0],
+        y - explosionPosition[1],
+        z - explosionPosition[2],
+      ).normalize();
+
+      // Combinar con dirección aleatoria para variabilidad y mantener sesgo hacia arriba
+      const randomDirection = new THREE.Vector3(
         Math.random() - 0.5,
         Math.random() - 0.5,
         Math.random() - 0.5,
       ).normalize();
 
-      // Añadir componente hacia arriba para hacer la explosión más dramática
-      direction.y += 0.3;
-      direction.normalize();
+      const finalDirection = new THREE.Vector3()
+        .addScaledVector(radialDirection, 0.7) // Fuerte componente radial
+        .addScaledVector(randomDirection, 0.3) // Algo de aleatoriedad
+        .normalize();
 
-      const force = explosionForce * (0.3 + Math.random() * 0.7);
-      velocities[i * 3] = direction.x * force;
-      velocities[i * 3 + 1] = direction.y * force;
-      velocities[i * 3 + 2] = direction.z * force;
+      finalDirection.y += 0.2; // Mantener un ligero sesgo hacia arriba
+      finalDirection.normalize();
+
+      const force = explosionForce * (0.5 + Math.random() * 0.8); // Ajustar rango de fuerza
+      velocities[i * 3] = finalDirection.x * force;
+      velocities[i * 3 + 1] = finalDirection.y * force;
+      velocities[i * 3 + 2] = finalDirection.z * force;
 
       // Colores más variados y brillantes para la explosión
       const colorType = Math.random();
@@ -228,7 +249,8 @@ const ParticleSystem: React.FC<ParticleSystemProps> = ({
       vLifetime = lifetime;
       
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-      gl_PointSize = size * (300.0 / -mvPosition.z);
+      // 3. Modificar tamaño de partícula según lifetime
+      gl_PointSize = size * (300.0 / -mvPosition.z) * vLifetime; 
       gl_Position = projectionMatrix * mvPosition;
     }
   `;
@@ -389,3 +411,4 @@ const ParticleSystem: React.FC<ParticleSystemProps> = ({
 };
 
 export default ParticleSystem;
+
