@@ -27,10 +27,10 @@ function App() {
         }}
       >
         <h1 style={{ margin: 0, fontSize: '1.5rem' }}>
-          🧪 Taller - Texturizado Dinámico
+          🧪 Taller - Texturizado Dinámico Mejorado
         </h1>
         <p style={{ margin: '5px 0', opacity: 0.8 }}>
-          Materiales con Shaders y Partículas
+          Materiales con Shaders, Partículas y Efectos Explosivos
         </p>
       </div>
 
@@ -86,18 +86,29 @@ function App() {
           bottom: '20px',
           right: '20px',
           color: 'white',
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          backgroundColor: 'rgba(0,0,0,0.8)',
           padding: '15px',
           borderRadius: '8px',
           fontSize: '0.9rem',
-          maxWidth: '300px',
+          maxWidth: '350px',
         }}
       >
         <h3 style={{ margin: '0 0 10px 0' }}>🎮 Controles:</h3>
-        <p style={{ margin: '5px 0' }}>• Click en la esfera para explosión</p>
-        <p style={{ margin: '5px 0' }}>• Hover para cambiar material</p>
-        <p style={{ margin: '5px 0' }}>• Usa el panel Leva para ajustes</p>
-        <p style={{ margin: '5px 0' }}>• Arrastra para rotar la cámara</p>
+        <p style={{ margin: '5px 0' }}>
+          • <strong>Click en la esfera</strong> → Explosión espectacular
+        </p>
+        <p style={{ margin: '5px 0' }}>
+          • <strong>Hover</strong> → Cambio de material y escala
+        </p>
+        <p style={{ margin: '5px 0' }}>
+          • <strong>Panel Leva</strong> → Personaliza efectos
+        </p>
+        <p style={{ margin: '5px 0' }}>
+          • <strong>Arrastrar</strong> → Rotar cámara
+        </p>
+        <p style={{ margin: '5px 0', fontSize: '0.8rem', opacity: 0.7 }}>
+          ✨ Efectos: Flash, Partículas, Ondas de Choque, Distorsión Espacial
+        </p>
       </div>
     </div>
   );

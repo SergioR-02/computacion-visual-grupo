@@ -16,6 +16,8 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const [hovered, setHovered] = useState(false);
+  const [clicked, setClicked] = useState(false);
+  const [clickTime, setClickTime] = useState(0);
   const { mouse } = useThree();
 
   // Controles GUI con Leva
@@ -52,6 +54,7 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
     uniform float uNoiseStrength;
     uniform bool uEnableNoise;
     uniform vec2 uMouse;
+    uniform float uClickEffect;
     
     varying vec2 vUv;
     varying vec3 vPosition;
@@ -158,8 +161,11 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
       float mouseDistance = length(uMouse);
       float mouseEffect = (1.0 - mouseDistance) * 0.2;
       
+      // Efecto de click - expansión explosiva
+      float clickExpansion = uClickEffect * 0.3 * sin(pos.y * 10.0 + time * 20.0);
+      
       // Displacement total
-      vDisplacement = wave + noise + mouseEffect;
+      vDisplacement = wave + noise + mouseEffect + clickExpansion;
       pos += normal * vDisplacement;
       
       vPosition = pos;
@@ -178,6 +184,7 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
     uniform bool uEnablePulse;
     uniform vec2 uMouse;
     uniform int uMaterialType;
+    uniform float uClickEffect;
     
     varying vec2 vUv;
     varying vec3 vPosition;
@@ -262,6 +269,18 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
       // Efecto de desplazamiento
       color += abs(vDisplacement) * 2.0;
       
+      // Efecto de click - flash brillante
+      if (uClickEffect > 0.0) {
+        vec3 flashColor = vec3(1.0, 1.0, 1.0);
+        float flashIntensity = uClickEffect * (1.0 + sin(time * 50.0) * 0.5);
+        color = mix(color, flashColor, flashIntensity * 0.7);
+        
+        // Efecto de ondas expansivas
+        float radius = length(vUv - 0.5);
+        float wave = sin(radius * 30.0 - time * 15.0) * uClickEffect;
+        color += vec3(wave * 0.5);
+      }
+      
       gl_FragColor = vec4(color, alpha);
     }
   `;
@@ -279,6 +298,7 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
       uEnablePulse: { value: enablePulse },
       uEnableNoise: { value: enableNoise },
       uMouse: { value: [0, 0] },
+      uClickEffect: { value: 0 },
       uMaterialType: {
         value: ['energy', 'liquid', 'fire', 'electric', 'portal'].indexOf(
           materialType,
@@ -320,10 +340,34 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
         'electric',
         'portal',
       ].indexOf(materialType);
+
+      // Efecto de click
+      if (clicked) {
+        const timeSinceClick = state.clock.elapsedTime - clickTime;
+        const clickDuration = 0.5;
+        const normalizedTime = timeSinceClick / clickDuration;
+
+        if (normalizedTime < 1.0) {
+          // Curva de decay exponencial para el efecto
+          const clickEffectValue =
+            Math.exp(-normalizedTime * 5) * (1 - normalizedTime);
+          materialRef.current.uniforms.uClickEffect.value = clickEffectValue;
+        } else {
+          materialRef.current.uniforms.uClickEffect.value = 0;
+          setClicked(false);
+        }
+      }
     }
 
-    // Rotación automática sutil
+    // Efecto de escala en click y hover
     if (meshRef.current) {
+      const targetScale = clicked ? 1.2 : hovered ? 1.05 : 1.0;
+      const currentScale = meshRef.current.scale.x;
+      const lerpedScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.1);
+
+      meshRef.current.scale.setScalar(lerpedScale);
+
+      // Rotación automática más sutil
       meshRef.current.rotation.y += 0.005;
       meshRef.current.rotation.x += 0.002;
     }
@@ -331,6 +375,8 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
 
   const handleClick = (event: any) => {
     event.stopPropagation();
+    setClicked(true);
+    setClickTime(Date.now() / 1000);
     onClick(position);
   };
 
