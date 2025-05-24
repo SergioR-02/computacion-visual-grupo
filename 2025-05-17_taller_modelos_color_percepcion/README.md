@@ -197,7 +197,7 @@ Modelo perceptualmente uniforme que intenta que la distancia entre colores refle
 
 ---
 
-🧩 Prompts Usados
+### 🧩 Prompts Usados
 
 
 - "Simula daltonismo tipo protanopía con matrices de transformación de color"
@@ -209,7 +209,7 @@ Modelo perceptualmente uniforme que intenta que la distancia entre colores refle
 
 ---
 
-💬 Reflexión Final  
+### 💬 Reflexión Final  
 
 Este taller nos permitió profundizar en la relación entre percepción visual humana y representaciones digitales de color. Aprendí cómo distintas representaciones (HSV, Lab) separan componentes del color útiles para manipulación visual, segmentación o simulación. Visualizar cada canal ayudó a comprender cómo cada dimensión afecta la percepción global.
 Ademas, me permitió profundizar en cómo los modelos de color afectan la percepción visual en contextos gráficos. Fue particularmente interesante trabajar con shaders, ya que ofrecen un gran control sobre cómo se representa el color a nivel de píxel, y permiten simular condiciones visuales como el daltonismo o la visión en escala de grises.

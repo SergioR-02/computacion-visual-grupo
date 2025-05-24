@@ -1,0 +1,73 @@
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  font-family: 'Arial', sans-serif;
+}
+
+h1 {
+  text-align: center;
+  margin: 10px 0;
+  font-size: 2rem;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.canvas-container {
+  flex: 1;
+  width: 100%;
+  position: relative;
+  min-height: 500px;
+}
+
+.instructions {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px;
+  margin: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.instructions h3 {
+  margin-top: 0;
+  color: #4fc3f7;
+}
+
+.instructions ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.instructions li {
+  margin: 5px 0;
+  font-size: 0.9rem;
+}
+
+/* Estilos para el panel de Leva */
+.leva-c_panel {
+  position: fixed !important;
+  top: 80px !important;
+  right: 20px !important;
+  z-index: 1000;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  .instructions {
+    margin: 5px;
+    padding: 10px;
+  }
+  
+  .leva-c_panel {
+    right: 10px !important;
+    top: 60px !important;
+  }
+}
