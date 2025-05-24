@@ -111,11 +111,13 @@ Aquí se mostrarán los resultados visuales de la optimización implementada:
 
 ![Resultado tree](resultados/Graphic%20Optimization.gif)
 
-🎞️ Estadísticas en tiempo real con y sin optimización (GIF)
+🎞️ Estadísticas en tiempo real intercambiado distancias  entre low y high poly tree optimización (GIF)
 
 ![Resultado tree](resultados/Graphic%20Optimization%20stadisitcs.gif)
 
+
 🧩 Prompts Usados
+
 
 "Implementa LOD con modelos GLB de árbol low poly y high poly"
 
