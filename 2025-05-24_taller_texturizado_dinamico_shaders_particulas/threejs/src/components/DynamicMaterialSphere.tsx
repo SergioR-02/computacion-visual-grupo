@@ -18,7 +18,7 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
   const [hovered, setHovered] = useState(false);
   const [clicked, setClicked] = useState(false);
   const [clickTime, setClickTime] = useState(0);
-  const { mouse } = useThree();
+  const { mouse, clock } = useThree();
 
   // Controles GUI con Leva
   const {
@@ -376,7 +376,7 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
   const handleClick = (event: any) => {
     event.stopPropagation();
     setClicked(true);
-    setClickTime(Date.now() / 1000);
+    setClickTime(clock.elapsedTime);
     onClick(position);
   };
 
@@ -402,3 +402,4 @@ const DynamicMaterialSphere: React.FC<DynamicMaterialSphereProps> = ({
 };
 
 export default DynamicMaterialSphere;
+
