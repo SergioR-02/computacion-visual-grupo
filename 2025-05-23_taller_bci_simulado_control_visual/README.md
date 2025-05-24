@@ -192,6 +192,9 @@ Arquitectura del sistema BCI completo:
 - Precisión de clasificación: ~85% en estados distintivos
 - Tiempo de respuesta visual: < 50ms
 
+![bci_sistema_tiempo_real_control_visual.gif](./resultados/bci_session_report.png)
+
+![bci_sistema_tiempo_real_control_visual.gif](./resultados/bci_session_report.png)
 ---
 
 ## 🧩 Prompts Usados

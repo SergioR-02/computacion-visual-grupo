@@ -29,5 +29,6 @@ export interface CameraConfig {
     near: number;
     far: number;
     position: [number, number, number];
+    zoom?: number;
   };
 }

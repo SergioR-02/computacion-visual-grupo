@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { PerspectiveCamera, OrthographicCamera } from 'three';
+import { PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import {
   CameraInfo,
   CameraControls,
   ProjectionIndicator,
   Scene3D,
   UIHeader,
+  CameraExplanation,
 } from './components';
 import { useProjection, useCameraConfig } from './hooks';
 import type { CameraType } from './types';
@@ -14,9 +15,7 @@ import './App.css';
 
 function App() {
   const [cameraType, setCameraType] = useState<CameraType>('perspective');
-  const [cameraRef, setCameraRef] = useState<
-    PerspectiveCamera | OrthographicCamera | null
-  >(null);
+  const [cameraRef, setCameraRef] = useState<any>(null);
 
   const { projectedPoint } = useProjection();
   const cameraConfig = useCameraConfig();
@@ -46,21 +45,29 @@ function App() {
       <UIHeader />
 
       {/* Escena 3D */}
-      <Canvas
-        style={{ background: '#0f172a' }}
-        onCreated={({ camera }) =>
-          setCameraRef(camera as PerspectiveCamera | OrthographicCamera)
-        }
-      >
+      <Canvas style={{ background: '#0f172a' }}>
         {cameraType === 'perspective' ? (
-          <perspectiveCamera
-            {...cameraConfig.perspective}
-            onUpdate={camera => setCameraRef(camera)}
+          <PerspectiveCamera
+            makeDefault
+            position={cameraConfig.perspective.position}
+            fov={cameraConfig.perspective.fov}
+            aspect={cameraConfig.perspective.aspect}
+            near={cameraConfig.perspective.near}
+            far={cameraConfig.perspective.far}
+            ref={setCameraRef}
           />
         ) : (
-          <orthographicCamera
-            {...cameraConfig.orthographic}
-            onUpdate={camera => setCameraRef(camera)}
+          <OrthographicCamera
+            makeDefault
+            position={cameraConfig.orthographic.position}
+            left={cameraConfig.orthographic.left}
+            right={cameraConfig.orthographic.right}
+            top={cameraConfig.orthographic.top}
+            bottom={cameraConfig.orthographic.bottom}
+            near={cameraConfig.orthographic.near}
+            far={cameraConfig.orthographic.far}
+            zoom={cameraConfig.orthographic.zoom}
+            ref={setCameraRef}
           />
         )}
 
@@ -69,6 +76,9 @@ function App() {
 
       {/* Indicador del punto proyectado */}
       <ProjectionIndicator projectedPoint={projectedPoint} />
+
+      {/* Explicación de la cámara actual */}
+      <CameraExplanation cameraType={cameraType} />
     </div>
   );
 }
