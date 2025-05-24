@@ -20,6 +20,12 @@ Lista de conceptos clave aplicados en el taller:
 
 ---
 
+**📝 Explicación breve: ¿Qué es un shader y para qué sirve?**
+
+
+Un shader es un pequeño programa que se ejecuta en la tarjeta gráfica para controlar cómo se dibujan los objetos en una escena 3D. Los shaders definen el aspecto visual de los objetos, como sus colores, luces, sombras, texturas y efectos especiales. Generalmente se dividen en vertex shaders, que transforman las posiciones de los vértices, y fragment shaders, que calculan el color final de cada píxel. Usar shaders permite un control muy detallado y creativo sobre el renderizado, logrando efectos visuales personalizados que no se obtienen con materiales estándar.
+
+
 ## 🔧 Herramientas y Entornos
 
 * React + Vite
@@ -148,4 +154,9 @@ Aquí se muestra el resultado del shader animado con toon shading aplicado:
 💬 Reflexión Final
 
 
-Este taller me permitió comprender cómo los shaders otorgan control total sobre la apariencia visual de una escena 3D. Usar shaderMaterial en React Three Fiber junto a GLSL fue una experiencia potente, especialmente al ver cómo pequeñas líneas de código pueden generar animaciones complejas o efectos estilizados como el toon shading. Entendí también la importancia de las normales y la iluminación en tiempo real para crear materiales que responden a la cámara o la luz.
+En este taller aprendí a modificar un shader para controlar manualmente tanto la animación de colores como el estilo de sombreado aplicado a un objeto 3D. Al trabajar con uTime y técnicas de cuantización en el fragment shader, pude ver cómo pequeños cambios en el código alteran completamente el aspecto visual, haciendo que el cubo tenga un efecto dinámico y estilizado tipo caricatura.
+
+Modificar el shader me enseñó la gran flexibilidad que ofrecen estos programas para crear efectos personalizados que no se logran con materiales estándar. Además, noté cómo el aspecto visual cambió de algo plano y estático a un objeto que responde a la luz y el tiempo, con colores vibrantes y una sensación más viva y artística.
+
+¿En resumen? Los shaders son una herramienta poderosa para darle personalidad y vida a las escenas 3D, y entenderlos abre muchas posibilidades creativas en gráficos computacionales.
+
