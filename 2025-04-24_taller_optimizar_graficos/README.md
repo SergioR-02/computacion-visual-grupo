@@ -113,7 +113,7 @@ Aquí se mostrarán los resultados visuales de la optimización implementada:
 
 🎞️ Estadísticas en tiempo real intercambiado distancias  entre low y high poly tree optimización (GIF)
 
-![Resultado tree](resultados/Graphic%20Optimization%20stadisitcs.gif)
+![Resultado tree stadistics](resultados/Graphic%20Optimization%20stadisitcs.gif)
 
 
 🧩 Prompts Usados
