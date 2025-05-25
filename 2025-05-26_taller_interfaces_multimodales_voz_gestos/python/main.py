@@ -145,20 +145,124 @@ class GestureDetector:
 class VoiceRecognizer:
     """Reconocedor de voz usando SpeechRecognition"""
     
-    def __init__(self):
+    def __init__(self, microphone_index=None):
         self.recognizer = sr.Recognizer()
-        self.microphone = sr.Microphone()
+        self.microphone_index = microphone_index
         self.is_listening = False
         self.command_queue = queue.Queue()
         
-        # Configurar el reconocedor
-        with self.microphone as source:
-            self.recognizer.adjust_for_ambient_noise(source, duration=1)
-            
+        # Configurar micrófono
+        self.setup_microphone()
+        
+        # Ajustar configuración para EMEET SmartCam
+        self.optimize_for_emeet()
+        
         # Sistema de síntesis de voz
         self.tts_engine = pyttsx3.init()
         self.tts_engine.setProperty('rate', 150)  # Velocidad de habla
+    
+    def setup_microphone(self):
+        """Configura el micrófono con mejor detección"""
+        try:
+            # Intentar con micrófono específico si se proporcionó
+            if self.microphone_index is not None:
+                print(f"🎤 Usando micrófono específico #{self.microphone_index}")
+                self.microphone = sr.Microphone(device_index=self.microphone_index)
+            else:
+                # Buscar el mejor micrófono disponible
+                self.microphone = self.find_best_microphone()
+            
+            # Configurar el reconocedor
+            print("🔧 Configurando micrófono...")
+            with self.microphone as source:
+                self.recognizer.adjust_for_ambient_noise(source, duration=2)
+                print(f"✅ Micrófono configurado - Umbral: {self.recognizer.energy_threshold}")
+                
+        except Exception as e:
+            print(f"⚠️  Error configurando micrófono: {e}")
+            print("🔄 Intentando con micrófono por defecto...")
+            try:
+                self.microphone = sr.Microphone()
+                with self.microphone as source:
+                    self.recognizer.adjust_for_ambient_noise(source, duration=1)
+            except Exception as e2:
+                print(f"❌ Error crítico con micrófono: {e2}")
+                raise e2
+    
+    def find_best_microphone(self):
+        """Encuentra el mejor micrófono disponible, priorizando EMEET SmartCam Nova 4K"""
+        import pyaudio
         
+        try:
+            p = pyaudio.PyAudio()
+            
+            # Buscar específicamente EMEET SmartCam Nova 4K
+            print("🔍 Buscando micrófono EMEET SmartCam Nova 4K...")
+            for i in range(p.get_device_count()):
+                try:
+                    info = p.get_device_info_by_index(i)
+                    if info['maxInputChannels'] > 0:
+                        # Buscar EMEET SmartCam en el nombre
+                        if "EMEET" in info['name'] or "SmartCam" in info['name']:
+                            print(f"🎯 ¡Encontrado! Usando: {info['name']}")
+                            test_mic = sr.Microphone(device_index=i)
+                            p.terminate()
+                            return test_mic
+                except:
+                    continue
+            
+            print("⚠️  No se encontró EMEET SmartCam, buscando otros micrófonos...")
+            
+            # Obtener micrófono por defecto como respaldo
+            try:
+                default_info = p.get_default_input_device_info()
+                default_mic = sr.Microphone(device_index=default_info['index'])
+                print(f"🎤 Usando micrófono por defecto: {default_info['name']}")
+                p.terminate()
+                return default_mic
+            except:
+                pass
+            
+            # Buscar cualquier micrófono funcional
+            for i in range(p.get_device_count()):
+                try:
+                    info = p.get_device_info_by_index(i)
+                    if info['maxInputChannels'] > 0:
+                        # Intentar crear micrófono
+                        test_mic = sr.Microphone(device_index=i)
+                        print(f"🎤 Usando micrófono: {info['name']}")
+                        p.terminate()
+                        return test_mic
+                except:
+                    continue
+            
+                        # p.terminate()
+            # Si nada funciona, usar micrófono por defecto sin índice
+            return sr.Microphone()
+            
+        except Exception as e:
+            print(f"⚠️  Error buscando micrófonos: {e}")
+            return sr.Microphone()
+    
+    def optimize_for_emeet(self):
+        """Optimiza la configuración específicamente para EMEET SmartCam Nova 4K"""
+        try:
+            # Ajustar configuración específica para EMEET SmartCam
+            # Estos valores funcionan mejor con cámaras web
+            self.recognizer.energy_threshold = 300  # Umbral más bajo para cámaras web
+            self.recognizer.dynamic_energy_threshold = True
+            self.recognizer.dynamic_energy_adjustment_damping = 0.15
+            self.recognizer.dynamic_energy_ratio = 1.5
+            self.recognizer.pause_threshold = 0.8  # Pausa más corta
+            self.recognizer.operation_timeout = None
+            self.recognizer.phrase_threshold = 0.3
+            self.recognizer.non_speaking_duration = 0.5
+            
+            print("🔧 Configuración optimizada para EMEET SmartCam Nova 4K")
+            
+        except Exception as e:
+            print(f"⚠️  Error optimizando para EMEET: {e}")
+         
     def listen_continuously(self):
         """Escucha continuamente comandos de voz en un hilo separado"""
         self.is_listening = True
@@ -424,6 +528,16 @@ class MultimodalInterface:
             self.show_statistics()
             message = "📊 Estadísticas mostradas"
             action_performed = True
+            
+        elif command == "mover":
+            self.toggle_object_movement()
+            message = "🏃 Movimiento activado/desactivado por voz"
+            action_performed = True
+            
+        elif command == "rotar":
+            self.toggle_object_rotation()
+            message = "🌀 Rotación activada/desactivada por voz"
+            action_performed = True
         
         # Si no se realizó ninguna acción válida
         if not action_performed:
@@ -529,9 +643,11 @@ class MultimodalInterface:
             "• Gesto OK + 'mostrar' = Ver estadísticas",
             "• Mano abierta + colores = Cambiar a color específico",
             "",
-            "🗣️ Comandos de voz disponibles:",
-            "cambiar, mover, rotar, mostrar, parar, reset, salir",
-            "azul, rojo, verde, amarillo",
+            "🗣️ Comandos de voz (funcionan solos o con gestos):",
+            "• 'mover' = Activar/desactivar movimiento",
+            "• 'rotar' = Activar/desactivar rotación", 
+            "• 'cambiar', 'mostrar', 'parar', 'reset', 'salir'",
+            "• Colores: azul, rojo, verde, amarillo",
         ]
         
         for text in info_texts:
