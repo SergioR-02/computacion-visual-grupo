@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Collision Particles Workshop - Three.js</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        overflow: hidden;
+      }
+      
+      #root {
+        width: 100vw;
+        height: 100vh;
+      }
+      
+      .ui-overlay {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 100;
+        color: white;
+        font-weight: 600;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+      }
+      
+      .instructions {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 100;
+        color: white;
+        font-size: 14px;
+        max-width: 300px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div class="ui-overlay">
+      <h3>🧪 Collision Particles Workshop</h3>
+      <p>Collisions: <span id="collision-count">0</span></p>
+    </div>
+    <div class="instructions">
+      <p><strong>Instructions:</strong></p>
+      <p>• Click to add new balls</p>
+      <p>• Press SPACE to reset scene</p>
+      <p>• Watch particles activate on collision!</p>
+    </div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html> 

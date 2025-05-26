@@ -255,27 +255,6 @@ function Scene() {
 
 ---
 
-### **Scripts Disponibles:**
-```bash
-npm run dev      # Servidor de desarrollo
-npm run build    # Construir para producción
-npm run preview  # Vista previa de la build
-npm run lint     # Verificar código con ESLint
-```
-
-### **Dependencias Principales:**
-```json
-{
-  "@react-three/drei": "^10.0.8",    // Helpers para R3F
-  "@react-three/fiber": "^9.1.2",    // React Three Fiber
-  "leva": "^0.10.0",                 // Panel de controles
-  "react": "^19.1.0",                // React
-  "three": "^0.176.0"                // Three.js
-}
-```
-
----
-
 ## 📊 Resultados Visuales
 
 | Propiedad | Efecto Visual | Aplicación |
