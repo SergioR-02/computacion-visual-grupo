@@ -1,0 +1,5 @@
+setuptools>=65.5.1
+wheel>=0.38.4
+opencv-python>=4.8.0.76
+numpy>=1.23.5
+Pillow>=9.5.0 

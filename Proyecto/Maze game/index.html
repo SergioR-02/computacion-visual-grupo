@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laberinto 3D - Juego</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #000;
+    }
+    
+    #gameContainer {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+    
+    #gameCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    
+    #gameUI {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    #stats {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+      pointer-events: all;
+    }
+    
+    #minimap {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 200px;
+      height: 200px;
+      background-color: rgba(0, 0, 0, 0.8);
+      border: 2px solid #fff;
+      border-radius: 10px;
+    }
+    
+    #gameOver, #victory {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: white;
+      background-color: rgba(0, 0, 0, 0.9);
+      padding: 30px;
+      border-radius: 15px;
+      display: none;
+      pointer-events: all;
+    }
+    
+    .button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    
+    .button:hover {
+      background-color: #45a049;
+    }
+    
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 24px;
+    }
+    
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      color: white;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="gameUI">
+      <div id="stats">
+        <h3>Estadísticas</h3>
+        <p>Llaves: <span id="keysCollected">0</span> / <span id="totalKeys">3</span></p>
+        <p>Tiempo: <span id="gameTime">00:00</span></p>
+        <p>FPS: <span id="fps">0</span></p>
+      </div>
+      
+      <canvas id="minimap"></canvas>
+      
+      <div id="instructions">
+        <p><strong>Controles:</strong></p>
+        <p>WASD - Mover</p>
+        <p>Mouse - Mirar</p>
+        <p>ESC - Pausar</p>
+      </div>
+      
+      <div id="loading">Cargando...</div>
+      
+      <div id="gameOver">
+        <h2>¡Game Over!</h2>
+        <p>El enemigo te ha atrapado</p>
+        <button class="button" onclick="restartGame()">Reiniciar</button>
+      </div>
+      
+      <div id="victory">
+        <h2>¡Victoria!</h2>
+        <p>Has recolectado todas las llaves</p>
+        <p>Tiempo: <span id="finalTime">00:00</span></p>
+        <button class="button" onclick="restartGame()">Jugar de nuevo</button>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
