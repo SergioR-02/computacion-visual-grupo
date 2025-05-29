@@ -15,14 +15,15 @@ class GestureDetector:
             min_tracking_confidence=0.5
         )
         self.mp_drawing = mp.solutions.drawing_utils
-        
-        # Variables para efectos visuales
+          # Variables para efectos visuales
         self.background_color = (0, 0, 0)  # Negro inicial
         self.particle_pos = [320, 240]  # Posición inicial del objeto
         self.particles = []  # Para efectos de partículas
         self.scene_mode = 0  # 0: Normal, 1: Juego, 2: Arte
         self.score = 0
         self.targets = []
+        self.show_distances = True  # Mostrar distancias por defecto
+        self.debug_console = False  # Debug en consola
         
         # Variables para modo arte
         self.canvas = None  # Lienzo para dibujar
@@ -81,25 +82,88 @@ class GestureDetector:
         """Calcular distancia entre dos puntos"""
         return math.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2)
     
+    def calculate_finger_distances(self, landmarks):
+        """
+        Calcular distancias entre diferentes combinaciones de dedos
+        Retorna un diccionario con todas las distancias relevantes
+        """
+        # Puntos de referencia para las puntas de los dedos
+        finger_tips = {
+            'thumb': landmarks[4],      # Pulgar
+            'index': landmarks[8],      # Índice
+            'middle': landmarks[12],    # Medio
+            'ring': landmarks[16],      # Anular
+            'pinky': landmarks[20]      # Meñique
+        }
+        
+        # Puntos de referencia para las articulaciones base
+        finger_bases = {
+            'thumb': landmarks[3],      # Base del pulgar
+            'index': landmarks[6],      # Base del índice
+            'middle': landmarks[10],    # Base del medio
+            'ring': landmarks[14],      # Base del anular
+            'pinky': landmarks[18]      # Base del meñique
+        }
+        
+        # Centro de la palma (aproximado)
+        palm_center = landmarks[9]  # Centro de la mano
+        
+        distances = {}
+        
+        # Distancias entre puntas de dedos
+        finger_names = list(finger_tips.keys())
+        for i, finger1 in enumerate(finger_names):
+            for finger2 in finger_names[i+1:]:
+                key = f"{finger1}_{finger2}_tips"
+                distances[key] = self.calculate_distance(
+                    finger_tips[finger1], finger_tips[finger2]
+                )
+        
+        # Distancias desde cada dedo al centro de la palma
+        for finger in finger_names:
+            key = f"{finger}_to_palm"
+            distances[key] = self.calculate_distance(
+                finger_tips[finger], palm_center
+            )
+        
+        # Distancias desde puntas a bases (longitud de dedos)
+        for finger in finger_names:
+            key = f"{finger}_length"
+            distances[key] = self.calculate_distance(
+                finger_tips[finger], finger_bases[finger]
+            )
+        
+        # Algunas distancias específicas útiles para gestos
+        distances['pinch_distance'] = distances['thumb_index_tips']  # Pellizco
+        distances['grip_width'] = distances['thumb_pinky_tips']      # Ancho de agarre
+        distances['pointer_spread'] = distances['index_middle_tips'] # Separación señalador
+        
+        return distances
+    
     def detect_gestures(self, landmarks):
         """Detectar gestos específicos"""
         finger_count, fingers_up = self.count_fingers(landmarks)
         
-        # Distancia entre índice y pulgar
-        thumb_tip = landmarks[4]
-        index_tip = landmarks[8]
-        distance = self.calculate_distance(thumb_tip, index_tip)
+        # Calcular todas las distancias entre dedos
+        finger_distances = self.calculate_finger_distances(landmarks)
+        
+        # Distancia entre índice y pulgar (para compatibilidad)
+        thumb_index_distance = finger_distances['thumb_index_tips']
         
         gestures = {
             'finger_count': finger_count,
             'fingers_up': fingers_up,
-            'thumb_index_distance': distance,
+            'thumb_index_distance': thumb_index_distance,
+            'finger_distances': finger_distances,  # Todas las distancias
             'palm_open': finger_count == 5,
             'fist': finger_count == 0,
             'peace': fingers_up == [0, 1, 1, 0, 0],
             'pointing': fingers_up == [0, 1, 0, 0, 0],
             'thumbs_up': fingers_up == [1, 0, 0, 0, 0],
-            'ok_sign': distance < 0.05 and fingers_up[2:] == [1, 1, 1]
+            'ok_sign': thumb_index_distance < 0.05 and fingers_up[2:] == [1, 1, 1],
+            'pinch': finger_distances['pinch_distance'] < 0.05,  # Gesto de pellizco
+            'wide_grip': finger_distances['grip_width'] > 0.15,  # Agarre amplio
+            'fingers_spread': finger_distances['pointer_spread'] > 0.08  # Dedos separados
         }
         
         return gestures
@@ -197,7 +261,6 @@ class GestureDetector:
                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         
         return frame
-    
     def process_art_mode(self, frame, gestures, hand_landmarks):
         """Modo arte: dibujo libre con líneas continuas"""
         h, w = frame.shape[:2]
@@ -215,20 +278,24 @@ class GestureDetector:
                             len(self.colors) - 1)
             color = self.colors[color_index]
             
+            # Determinar grosor del pincel según el ancho del agarre
+            grip_width = gestures['finger_distances']['grip_width']
+            brush_size = max(2, min(20, int(grip_width * 100)))
+            
             if gestures['pointing']:
                 # Si estamos dibujando y tenemos posición anterior, dibujar línea
                 if self.is_drawing and self.prev_drawing_pos is not None:
                     cv2.line(self.canvas, tuple(self.prev_drawing_pos), 
-                           tuple(current_pos), color, 8)
+                           tuple(current_pos), color, brush_size)
                 else:
                     # Primer punto, dibujar círculo
-                    cv2.circle(self.canvas, tuple(current_pos), 8, color, -1)
+                    cv2.circle(self.canvas, tuple(current_pos), brush_size//2, color, -1)
                 
                 self.prev_drawing_pos = current_pos
                 self.is_drawing = True
                 
                 # Mostrar cursor de dibujo en tiempo real
-                cv2.circle(frame, tuple(current_pos), 15, color, 2)
+                cv2.circle(frame, tuple(current_pos), brush_size + 5, color, 2)
                 cv2.circle(frame, tuple(current_pos), 5, color, -1)
                 
             else:
@@ -236,20 +303,93 @@ class GestureDetector:
                 self.is_drawing = False
                 self.prev_drawing_pos = None
             
-            # Mostrar color actual
+            # Mostrar color actual y grosor
             cv2.rectangle(frame, (10, 10), (60, 60), color, -1)
             cv2.rectangle(frame, (10, 10), (60, 60), (255, 255, 255), 2)
             cv2.putText(frame, 'Color', (70, 40), cv2.FONT_HERSHEY_SIMPLEX, 
                        0.5, (255, 255, 255), 1)
+            
+            # Mostrar grosor del pincel
+            cv2.putText(frame, f'Grosor: {brush_size}', (70, 25), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+            
+            # Mostrar distancias importantes
+            distances = gestures['finger_distances']
+            cv2.putText(frame, f'Pellizco: {distances["pinch_distance"]:.3f}', 
+                       (10, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+            cv2.putText(frame, f'Agarre: {distances["grip_width"]:.3f}', 
+                       (10, h - 35), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
         
         # Combinar canvas con frame
         frame = cv2.addWeighted(frame, 0.7, self.canvas, 0.8, 0)
         
         # Instrucciones en pantalla
-        cv2.putText(frame, 'Indice: Dibujar | Pulgar-Indice: Color', 
-                   (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        cv2.putText(frame, 'Indice: Dibujar | Pulgar-Indice: Color | Agarre: Grosor', 
+                   (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         
         return frame
+    
+    def display_all_distances(self, frame, gestures):
+        """Mostrar todas las distancias calculadas en pantalla"""
+        if not gestures or 'finger_distances' not in gestures:
+            return frame
+        
+        distances = gestures['finger_distances']
+        h, w = frame.shape[:2]
+        
+        # Lista de distancias importantes a mostrar
+        display_distances = [
+            ('Pulgar-Indice', 'thumb_index_tips'),
+            ('Indice-Medio', 'index_middle_tips'),
+            ('Medio-Anular', 'middle_ring_tips'),
+            ('Anular-Menique', 'ring_pinky_tips'),
+            ('Pulgar-Menique', 'thumb_pinky_tips'),
+            ('Pellizco', 'pinch_distance'),
+            ('Agarre Total', 'grip_width'),
+            ('Separacion', 'pointer_spread'),
+        ]
+        
+        # Fondo semitransparente para mejor legibilidad
+        overlay = np.zeros((h, w, 3), dtype=np.uint8)
+        cv2.rectangle(overlay, (w - 280, 10), (w - 10, 250), (0, 0, 0), -1)
+        frame = cv2.addWeighted(frame, 0.8, overlay, 0.4, 0)
+        
+        # Título
+        cv2.putText(frame, 'DISTANCIAS ENTRE DEDOS', (w - 270, 30), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv2.line(frame, (w - 270, 35), (w - 20, 35), (255, 255, 255), 1)
+        
+        # Mostrar distancias en la esquina derecha
+        start_y = 50
+        for i, (name, key) in enumerate(display_distances):
+            if key in distances:
+                value = distances[key]
+                # Cambiar color según el valor (verde = cerca, rojo = lejos)
+                if value < 0.05:
+                    color = (0, 255, 0)  # Verde - muy cerca
+                elif value < 0.1:
+                    color = (0, 255, 255)  # Amarillo - cerca
+                elif value < 0.15:
+                    color = (0, 165, 255)  # Naranja - medio
+                else:
+                    color = (0, 0, 255)  # Rojo - lejos
+                
+                text = f'{name}: {value:.3f}'
+                cv2.putText(frame, text, (w - 270, start_y + i * 25), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+        
+        return frame
+    
+    def display_distance_debug(self, gestures):
+        """Imprimir distancias en consola para debug"""
+        if not gestures or 'finger_distances' not in gestures:
+            return
+        
+        distances = gestures['finger_distances']
+        print("\n=== DISTANCIAS ENTRE DEDOS ===")
+        for key, value in distances.items():
+            print(f"{key}: {value:.3f}")
+        print("=" * 30)
     
     def run(self):
         """Función principal"""
@@ -257,12 +397,13 @@ class GestureDetector:
         
         # Configurar ventana
         cv2.namedWindow('Taller MediaPipe - Gestos', cv2.WINDOW_AUTOSIZE)
-        
         print("🎮 CONTROLES:")
         print("- Espacio: Cambiar modo (Normal/Juego/Arte)")
         print("- ESC: Salir")
         print("- R: Reiniciar juego")
         print("- C: Limpiar canvas (solo en modo Arte)")
+        print("- D: Activar/desactivar visualización de distancias")
+        print("- F: Activar/desactivar debug en consola")
         print("\n🖐️ GESTOS:")
         print("- Dedos extendidos: Cambiar color de fondo")
         print("- Dedo índice: Mover cursor/dibujar líneas")
@@ -309,9 +450,15 @@ class GestureDetector:
                     if gestures['palm_open']:
                         # Evitar cambios muy rápidos
                         pass
-            
-            # Actualizar partículas
+              # Actualizar partículas
             self.update_particles(frame)
+              # Mostrar todas las distancias en tiempo real
+            if gestures and self.show_distances:
+                frame = self.display_all_distances(frame, gestures)
+                
+                # Debug en consola si está activado
+                if self.debug_console:
+                    self.display_distance_debug(gestures)
             
             # Mostrar información en pantalla
             mode_names = ['Normal', 'Juego', 'Arte']
@@ -321,8 +468,7 @@ class GestureDetector:
             if gestures:
                 cv2.putText(frame, f'Dedos: {gestures["finger_count"]}', 
                            (10, h - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                
-                # Mostrar gestos detectados
+                  # Mostrar gestos detectados
                 gesture_text = []
                 if gestures['thumbs_up']:
                     gesture_text.append('👍')
@@ -332,10 +478,14 @@ class GestureDetector:
                     gesture_text.append('👌')
                 if gestures['fist']:
                     gesture_text.append('✊')
+                if gestures['pinch']:
+                    gesture_text.append('🤏')
+                if gestures['wide_grip']:
+                    gesture_text.append('🖐️')
                 
                 if gesture_text:
                     cv2.putText(frame, ' '.join(gesture_text), 
-                               (w - 150, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                               (w - 200, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             
             # Mostrar frame
             cv2.imshow('Taller MediaPipe - Gestos', frame)
@@ -356,11 +506,17 @@ class GestureDetector:
             elif key == ord('r'):  # R
                 self.init_game()
                 self.score = 0
-                self.particles.clear()
+                self.particles.clear()            
             elif key == ord('c') and self.scene_mode == 2:  # C - Limpiar canvas en modo arte
                 self.canvas = None
                 self.prev_drawing_pos = None
                 self.is_drawing = False
+            elif key == ord('d'):  # D - Activar/desactivar visualización de distancias
+                self.show_distances = not self.show_distances
+                print(f"📊 Visualización de distancias: {'ACTIVADA' if self.show_distances else 'DESACTIVADA'}")
+            elif key == ord('f'):  # F - Activar/desactivar debug en consola
+                self.debug_console = not self.debug_console
+                print(f"🐛 Debug en consola: {'ACTIVADO' if self.debug_console else 'DESACTIVADO'}")
         
         cap.release()
         cv2.destroyAllWindows()

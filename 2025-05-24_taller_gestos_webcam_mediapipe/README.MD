@@ -262,6 +262,9 @@ detector.run()
 
 ![Resultado tree](resultados/Demovisual.gif)
 
+### Distancia entre dedos
+![Resultado tree](resultados/Distancia.gif)
+
 ---
 
 ## 💬 Reflexión y Aprendizajes
