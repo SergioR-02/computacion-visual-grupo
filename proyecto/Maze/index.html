@@ -36,6 +36,16 @@
       #minimapCanvas {
         display: block;
       }
+      #coinCounter {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        font-size: 20px;
+        color: yellow;
+        background-color: rgba(0,0,0,0.5);
+        padding: 5px 10px;
+        border-radius: 5px;
+      }
     </style>
   </head>
   <body>
@@ -53,6 +63,7 @@
     <div id="minimapContainer">
       <canvas id="minimapCanvas"></canvas>
     </div>
+    <div id="coinCounter">Coins: 0 / 3</div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

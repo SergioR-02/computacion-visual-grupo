@@ -63,6 +63,31 @@ def create_maze(width: int, height: int) -> list[list[int]]:
             # Backtrack
             stack.pop()
 
+    # Place coins randomly on path cells
+    num_coins = 3
+    placed_coins = 0
+    path_cells = []
+    for r_idx, row in enumerate(maze):
+        for c_idx, cell in enumerate(row):
+            if cell == 0:
+                path_cells.append((c_idx, r_idx))
+    
+    # Remove player start from potential coin spots
+    if (start_x, start_y) in path_cells:
+        path_cells.remove((start_x, start_y))
+
+    random.shuffle(path_cells)
+
+    for _ in range(min(num_coins, len(path_cells))):
+        if not path_cells: # Should not happen if maze is valid and num_coins is reasonable
+            break
+        coin_x, coin_y = path_cells.pop()
+        maze[coin_y][coin_x] = 2 # 2 represents a coin
+        placed_coins += 1
+    
+    if placed_coins < num_coins:
+        print(f"Warning: Could only place {placed_coins} out of {num_coins} requested coins.")
+
     # Create an exit
     # Ensure the exit is on a path cell, and connected
     # A simple way: pick a location like bottom-right, but ensure it's an odd index for consistency with paths

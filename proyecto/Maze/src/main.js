@@ -11,6 +11,11 @@ let prevTime = performance.now();
 const wallSize = 5;
 const wallHeight = 5;
 let mazeData = [];
+let coinMeshes = [];
+let coinsCollected = 0;
+const totalCoins = 3;
+let coinCounterElement;
+let exitCell = null; // To store the coordinates of the exit cell
 
 // Minimap variables
 let minimapCanvas, minimapCtx;
@@ -75,6 +80,10 @@ async function init() {
   minimapCanvas.width = minimapSize;
   minimapCanvas.height = minimapSize;
 
+  // Coin counter UI
+  coinCounterElement = document.getElementById('coinCounter');
+  updateCoinCounter();
+
   // Load maze data
   try {
     const response = await fetch('../public/maze.json');
@@ -85,6 +94,7 @@ async function init() {
     if (mazeData.length === 0 || mazeData[0].length === 0) {
       throw new Error("Maze data is empty or invalid.");
     }
+    identifyExitCell(); // Call this before createMazeMesh to know the exit
     createMazeMesh();
     setPlayerStartPosition();
 
@@ -117,11 +127,64 @@ async function init() {
   animate();
 }
 
+function identifyExitCell() {
+  // Find the exit cell(s) created by python script (a path cell on the border)
+  // For simplicity, we assume the Python script creates a clear exit.
+  // An exit is a path cell (0) at the border that is not the start cell.
+  const rows = mazeData.length;
+  const cols = mazeData[0].length;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (mazeData[r][c] === 0 && (r === 0 || r === rows - 1 || c === 0 || c === cols - 1)) {
+        // Heuristic: if player start is (1,1), a common maze exit might be at other end
+        // The python script now makes exit at maze[height-2][width-1] or maze[height-1][width-2]
+        // which translates to r=rows-2, c=cols-1 OR r=rows-1, c=cols-2 on the outermost part.
+        // Let's check for cells that are path and are at the very edge.
+        if ((r === rows - 1 && mazeData[r - 1] && mazeData[r - 1][c] === 0) || // Exit at bottom edge
+          (r === 0 && mazeData[r + 1] && mazeData[r + 1][c] === 0) || // Exit at top edge
+          (c === cols - 1 && mazeData[r][c - 1] === 0) || // Exit at right edge
+          (c === 0 && mazeData[r][c + 1] === 0)) { // Exit at left edge
+          // Further check: is it one of the specific cells the python script creates?
+          if ((r === rows - 2 && c === cols - 1 && mazeData[r][c - 1] === 0) ||
+            (r === rows - 1 && c === cols - 2 && mazeData[r - 1] && mazeData[r - 1][c] === 0)) {
+            exitCell = { r, c };
+            console.log(`Exit cell identified at [${r}, ${c}]`);
+            return;
+          }
+          // Fallback to a more general border path cell if specific not found
+          if (exitCell === null) { // Take the first one found as a potential generic exit
+            exitCell = { r, c };
+            console.log(`Potential generic exit cell identified at [${r}, ${c}]`);
+          }
+        }
+      }
+    }
+  }
+  if (exitCell) {
+    console.log(`Using identified exit cell at [${exitCell.r}, ${exitCell.c}]`);
+  } else {
+    console.warn("Could not reliably identify an exit cell from mazeData borders.");
+    // As a last resort, use the one defined by python script directly if coordinates are known
+    // This assumes maze dimensions are at least 3x3 for width-2/height-2 to be valid.
+    if (rows > 2 && cols > 2) {
+      // Check if python script's default exit points are paths
+      if (mazeData[rows - 2][cols - 1] === 0) exitCell = { r: rows - 2, c: cols - 1 };
+      else if (mazeData[rows - 1][cols - 2] === 0) exitCell = { r: rows - 1, c: cols - 2 };
+      if (exitCell) console.log("Fallback: Using Python script's hardcoded exit location.", exitCell);
+    }
+  }
+}
+
 function createMazeMesh() {
   const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 }); // Grey walls
   const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x90ee90 }); // Light green floor
+  const coinMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xccaa00 }); // Gold
   const wallGeometry = new THREE.BoxGeometry(wallSize, wallHeight, wallSize);
   const floorGeometry = new THREE.PlaneGeometry(wallSize, wallSize);
+  const coinGeometry = new THREE.CylinderGeometry(wallSize * 0.2, wallSize * 0.2, wallHeight * 0.1, 16);
+
+  coinMeshes = []; // Clear previous coin meshes if any
 
   for (let r = 0; r < mazeData.length; r++) {
     for (let c = 0; c < mazeData[r].length; c++) {
@@ -132,11 +195,20 @@ function createMazeMesh() {
         const wall = new THREE.Mesh(wallGeometry, wallMaterial);
         wall.position.set(x, wallHeight / 2, z);
         scene.add(wall);
-      } else { // Path (floor)
+      } else if (mazeData[r][c] === 0 || mazeData[r][c] === 2) { // Path or Coin spot
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.position.set(x, 0, z);
         floor.rotation.x = -Math.PI / 2; // Rotate plane to be horizontal
         scene.add(floor);
+
+        if (mazeData[r][c] === 2) { // Coin
+          const coin = new THREE.Mesh(coinGeometry, coinMaterial);
+          coin.position.set(x, wallHeight * 0.15, z); // Slightly above floor
+          coin.rotation.x = Math.PI / 2; // Lay it flat if it's a cylinder
+          coin.userData = { r, c, collected: false }; // Store grid coords and status
+          scene.add(coin);
+          coinMeshes.push(coin);
+        }
       }
     }
   }
@@ -264,12 +336,55 @@ function onKeyUp(event) {
   }
 }
 
+function updateCoinCounter() {
+  if (coinCounterElement) {
+    coinCounterElement.textContent = `Coins: ${coinsCollected} / ${totalCoins}`;
+  }
+}
+
+function checkWinCondition() {
+  if (!exitCell) return false;
+
+  const playerPosition = controls.getObject().position;
+  const playerGridR = Math.round((playerPosition.z / wallSize) + (mazeData.length / 2));
+  const playerGridC = Math.round((playerPosition.x / wallSize) + (mazeData[0].length / 2));
+
+  if (playerGridR === exitCell.r && playerGridC === exitCell.c) {
+    if (coinsCollected >= totalCoins) {
+      // Display Win Message
+      const instructions = document.getElementById('instructions');
+      const blocker = document.getElementById('blocker');
+      instructions.innerHTML = "<p style='font-size:36px'>YOU WIN!</p><p>Press ESC to release mouse.</p>";
+      blocker.style.display = 'block';
+      instructions.style.display = '';
+      controls.unlock();
+      return true; // Game won
+    } else {
+      // Display message: Need more coins
+      // This could be a temporary message on screen or part of the HUD
+      console.log(`At exit, but only ${coinsCollected}/${totalCoins} coins collected.`);
+      // Optionally, show a message on the #instructions div briefly
+      const instructions = document.getElementById('instructions');
+      const blocker = document.getElementById('blocker');
+      instructions.innerHTML = `<p style='font-size:24px'>You need ${totalCoins - coinsCollected} more coin(s) to exit!</p><p>(Click to continue)</p>`;
+      blocker.style.display = 'block';
+      instructions.style.display = '';
+      // Temporarily unlock to show message, then relock or let user click
+      // This might be disruptive, a HUD message is better for this.
+      // For now, we just log it and don't halt the game here.
+    }
+  }
+  return false; // Game not won yet
+}
+
 function animate() {
   requestAnimationFrame(animate);
 
   const time = performance.now();
   const delta = (time - prevTime) / 1000;
   prevTime = time;
+
+  let gameWon = false;
 
   if (controls.isLocked === true) {
     const playerObject = controls.getObject();
@@ -316,12 +431,33 @@ function animate() {
 
     // Always ensure the player is on the ground after all movement attempts
     playerObject.position.y = wallHeight / 2;
+
+    // Check for coin collection
+    const playerRadius = 0.5; // Same as in checkCollision
+    coinMeshes.forEach((coin /*, index -- Removed: Unused */) => {
+      if (!coin.userData.collected) {
+        const distanceToCoin = playerObject.position.distanceTo(coin.position);
+        if (distanceToCoin < (wallSize * 0.2 + playerRadius)) { // coinRadius + playerRadius
+          coin.userData.collected = true;
+          scene.remove(coin);
+          coinsCollected++;
+          updateCoinCounter();
+          console.log("Coin collected! Total:", coinsCollected);
+        }
+      }
+    });
+    // Filter out collected coins properly after iteration
+    coinMeshes = coinMeshes.filter(coin => !coin.userData.collected);
+
+    if (checkWinCondition()) {
+      gameWon = true;
+    }
   }
 
   renderer.render(scene, camera);
 
   // Update minimap
-  if (minimapCtx && mazeData && mazeData.length > 0) {
+  if (minimapCtx && mazeData && mazeData.length > 0 && !gameWon) {
     drawMinimapBase();
     drawPlayerOnMinimap();
   }
