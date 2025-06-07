@@ -37,11 +37,7 @@ export default function ComparisonScene({ t }: ComparisonSceneProps) {
   useFrame(() => {
     // Interpolación lineal
     if (linearMeshRef.current) {
-      const position = new Vector3().lerpVectors(
-        startPoint.clone().add(linearOffset),
-        endPoint.clone().add(linearOffset),
-        t,
-      );
+      const position = new Vector3().lerpVectors(startPoint, endPoint, t);
       linearMeshRef.current.position.copy(position);
       linearMeshRef.current.rotation.y = THREE.MathUtils.lerp(
         0,
@@ -53,9 +49,11 @@ export default function ComparisonScene({ t }: ComparisonSceneProps) {
     // Interpolación Bézier
     if (bezierMeshRef.current) {
       const position = bezierCurve.getPoint(t);
+      // Remover el offset del grupo porque ya se aplica automáticamente
+      position.sub(bezierOffset);
       bezierMeshRef.current.position.copy(position);
 
-      if (t < 1) {
+      if (t < 1 && t > 0) {
         const tangent = bezierCurve.getTangent(t);
         bezierMeshRef.current.lookAt(
           bezierMeshRef.current.position.clone().add(tangent),
@@ -65,11 +63,7 @@ export default function ComparisonScene({ t }: ComparisonSceneProps) {
 
     // Interpolación SLERP
     if (slerpMeshRef.current) {
-      const position = new Vector3().lerpVectors(
-        startPoint.clone().add(slerpOffset),
-        endPoint.clone().add(slerpOffset),
-        t,
-      );
+      const position = new Vector3().lerpVectors(startPoint, endPoint, t);
       slerpMeshRef.current.position.copy(position);
 
       const startQuat = new Quaternion().setFromEuler(new THREE.Euler(0, 0, 0));
@@ -89,7 +83,7 @@ export default function ComparisonScene({ t }: ComparisonSceneProps) {
     <>
       {/* Interpolación Lineal */}
       <group position={linearOffset}>
-        <mesh ref={linearMeshRef}>
+        <mesh ref={linearMeshRef} position={startPoint}>
           <boxGeometry args={[0.6, 0.6, 0.6]} />
           <meshStandardMaterial color="#ff6b6b" />
         </mesh>
@@ -136,7 +130,7 @@ export default function ComparisonScene({ t }: ComparisonSceneProps) {
 
       {/* Interpolación Bézier */}
       <group position={bezierOffset}>
-        <mesh ref={bezierMeshRef}>
+        <mesh ref={bezierMeshRef} position={startPoint}>
           <boxGeometry args={[0.6, 0.6, 0.6]} />
           <meshStandardMaterial color="#4ecdc4" />
         </mesh>
@@ -161,6 +155,63 @@ export default function ComparisonScene({ t }: ComparisonSceneProps) {
           <meshStandardMaterial color="#ffeb3b" />
         </mesh>
 
+        {/* Línea de la curva Bézier */}
+        <line>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              args={[
+                new Float32Array(
+                  bezierCurve.getPoints(50).flatMap(p => [p.x, p.y, p.z]),
+                ),
+                3,
+              ]}
+            />
+          </bufferGeometry>
+          <lineBasicMaterial color="#4ecdc4" opacity={0.7} transparent />
+        </line>
+
+        {/* Líneas de control */}
+        <line>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              args={[
+                new Float32Array([
+                  startPoint.x,
+                  startPoint.y,
+                  startPoint.z,
+                  controlPoint1.x,
+                  controlPoint1.y,
+                  controlPoint1.z,
+                ]),
+                3,
+              ]}
+            />
+          </bufferGeometry>
+          <lineBasicMaterial color="#ffeb3b" opacity={0.3} transparent />
+        </line>
+
+        <line>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              args={[
+                new Float32Array([
+                  endPoint.x,
+                  endPoint.y,
+                  endPoint.z,
+                  controlPoint2.x,
+                  controlPoint2.y,
+                  controlPoint2.z,
+                ]),
+                3,
+              ]}
+            />
+          </bufferGeometry>
+          <lineBasicMaterial color="#ffeb3b" opacity={0.3} transparent />
+        </line>
+
         <Text
           position={[-5, 0, 0]}
           fontSize={0.3}
@@ -174,7 +225,7 @@ export default function ComparisonScene({ t }: ComparisonSceneProps) {
 
       {/* Interpolación SLERP */}
       <group position={slerpOffset}>
-        <mesh ref={slerpMeshRef}>
+        <mesh ref={slerpMeshRef} position={startPoint}>
           <boxGeometry args={[0.6, 0.6, 0.6]} />
           <meshStandardMaterial color="#45b7d1" />
         </mesh>
@@ -230,6 +281,9 @@ export default function ComparisonScene({ t }: ComparisonSceneProps) {
       >
         Comparación de Técnicas de Interpolación
       </Text>
+
+      {/* Grid de referencia */}
+      <gridHelper args={[20, 20, '#333333', '#333333']} />
     </>
   );
 }

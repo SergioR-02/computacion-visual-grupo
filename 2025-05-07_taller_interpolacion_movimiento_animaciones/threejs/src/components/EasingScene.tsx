@@ -15,16 +15,22 @@ const easingFunctions = {
   easeOutQuad: (t: number) => t * (2 - t),
   easeInOutQuad: (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
   easeInCubic: (t: number) => t * t * t,
-  easeOutCubic: (t: number) => --t * t * t + 1,
+  easeOutCubic: (t: number) => {
+    const tMinus1 = t - 1;
+    return tMinus1 * tMinus1 * tMinus1 + 1;
+  },
   bounceOut: (t: number) => {
     if (t < 1 / 2.75) {
       return 7.5625 * t * t;
     } else if (t < 2 / 2.75) {
-      return 7.5625 * (t -= 1.5 / 2.75) * t + 0.75;
+      const tAdjusted = t - 1.5 / 2.75;
+      return 7.5625 * tAdjusted * tAdjusted + 0.75;
     } else if (t < 2.5 / 2.75) {
-      return 7.5625 * (t -= 2.25 / 2.75) * t + 0.9375;
+      const tAdjusted = t - 2.25 / 2.75;
+      return 7.5625 * tAdjusted * tAdjusted + 0.9375;
     } else {
-      return 7.5625 * (t -= 2.625 / 2.75) * t + 0.984375;
+      const tAdjusted = t - 2.625 / 2.75;
+      return 7.5625 * tAdjusted * tAdjusted + 0.984375;
     }
   },
 };
@@ -49,7 +55,8 @@ export default function EasingScene({ t }: EasingSceneProps) {
           endPoint,
           easedT,
         );
-        position.y = index * 1.2 - (easingTypes.length - 1) * 0.6;
+        // Elevar todo el conjunto 2 unidades sobre el suelo
+        position.y = index * 1.2 - (easingTypes.length - 1) * 0.6 + 2;
         mesh.position.copy(position);
       }
     });
@@ -68,7 +75,7 @@ export default function EasingScene({ t }: EasingSceneProps) {
   return (
     <>
       {easingTypes.map((easingType, index) => {
-        const yPosition = index * 1.2 - (easingTypes.length - 1) * 0.6;
+        const yPosition = index * 1.2 - (easingTypes.length - 1) * 0.6 + 2;
 
         return (
           <group key={easingType}>
@@ -136,7 +143,7 @@ export default function EasingScene({ t }: EasingSceneProps) {
               anchorX="center"
               anchorY="middle"
             >
-              {easingFunctions[easingType](t).toFixed(2)}
+              {t > 0 ? easingFunctions[easingType](t).toFixed(2) : '0.00'}
             </Text>
           </group>
         );
@@ -144,7 +151,7 @@ export default function EasingScene({ t }: EasingSceneProps) {
 
       {/* Título */}
       <Text
-        position={[0, 4.5, 0]}
+        position={[0, 6.5, 0]}
         fontSize={0.5}
         color="white"
         anchorX="center"
@@ -155,7 +162,7 @@ export default function EasingScene({ t }: EasingSceneProps) {
 
       {/* Leyenda */}
       <Text
-        position={[-5.5, 4, 0]}
+        position={[-5.5, 6, 0]}
         fontSize={0.3}
         color="white"
         anchorX="center"
@@ -165,7 +172,7 @@ export default function EasingScene({ t }: EasingSceneProps) {
       </Text>
 
       <Text
-        position={[5.5, 4, 0]}
+        position={[5.5, 6, 0]}
         fontSize={0.3}
         color="white"
         anchorX="center"

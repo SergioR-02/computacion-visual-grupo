@@ -1,10 +1,36 @@
 import { useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import InterpolationScene from './components/InterpolationScene';
 import ComparisonScene from './components/ComparisonScene';
 import EasingScene from './components/EasingScene';
 import './App.css';
+
+// Componente para manejar la animación global
+function AnimationController({
+  isAnimating,
+  t,
+  setT,
+  setIsAnimating,
+}: {
+  isAnimating: boolean;
+  t: number;
+  setT: (t: number) => void;
+  setIsAnimating: (animating: boolean) => void;
+}) {
+  useFrame((_, delta) => {
+    if (isAnimating) {
+      const newT = Math.min(t + delta * 0.5, 1); // Velocidad de animación
+      setT(newT);
+
+      if (newT >= 1) {
+        setIsAnimating(false);
+      }
+    }
+  });
+
+  return null; // Este componente no renderiza nada visible
+}
 
 function App() {
   const [interpolationType, setInterpolationType] = useState<
@@ -204,13 +230,19 @@ function App() {
         <ambientLight intensity={0.6} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
 
+        {/* Controlador de animación global */}
+        <AnimationController
+          isAnimating={isAnimating}
+          t={t}
+          setT={setT}
+          setIsAnimating={setIsAnimating}
+        />
+
         {viewMode === 'individual' && (
           <InterpolationScene
             interpolationType={interpolationType}
             isAnimating={isAnimating}
             t={t}
-            setT={setT}
-            setIsAnimating={setIsAnimating}
           />
         )}
 

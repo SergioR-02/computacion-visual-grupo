@@ -14,16 +14,12 @@ interface InterpolationSceneProps {
   interpolationType: 'linear' | 'bezier' | 'slerp';
   isAnimating: boolean;
   t: number;
-  setT: (t: number) => void;
-  setIsAnimating: (animating: boolean) => void;
 }
 
 export default function InterpolationScene({
   interpolationType,
   isAnimating,
   t,
-  setT,
-  setIsAnimating,
 }: InterpolationSceneProps) {
   const meshRef = useRef<Mesh>(null);
   const lineRef = useRef<THREE.Line>(null);
@@ -44,17 +40,8 @@ export default function InterpolationScene({
     endPoint,
   );
 
-  // Animación automática
-  useFrame((_, delta) => {
-    if (isAnimating) {
-      const newT = Math.min(t + delta * 0.5, 1); // Velocidad de animación
-      setT(newT);
-
-      if (newT >= 1) {
-        setIsAnimating(false);
-      }
-    }
-
+  // Aplicar interpolación en cada frame
+  useFrame(() => {
     if (meshRef.current) {
       // Aplicar interpolación según el tipo seleccionado
       switch (interpolationType) {
