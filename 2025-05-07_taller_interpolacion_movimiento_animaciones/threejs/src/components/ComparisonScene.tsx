@@ -281,9 +281,6 @@ export default function ComparisonScene({ t }: ComparisonSceneProps) {
       >
         Comparación de Técnicas de Interpolación
       </Text>
-
-      {/* Grid de referencia */}
-      <gridHelper args={[20, 20, '#333333', '#333333']} />
     </>
   );
 }

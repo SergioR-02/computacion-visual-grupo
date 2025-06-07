@@ -287,8 +287,6 @@ export default function InterpolationScene({
         {interpolationType === 'bezier' && 'Curva de Bézier Cúbica'}
         {interpolationType === 'slerp' && 'SLERP - Interpolación Esférica'}
       </Text>{' '}
-      {/* Grid de referencia */}
-      <gridHelper args={[20, 20, '#333333', '#333333']} />
     </>
   );
 }

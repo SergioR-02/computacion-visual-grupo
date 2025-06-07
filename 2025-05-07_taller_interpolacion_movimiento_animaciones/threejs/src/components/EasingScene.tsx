@@ -180,9 +180,6 @@ export default function EasingScene({ t }: EasingSceneProps) {
       >
         Valor
       </Text>
-
-      {/* Grid de referencia */}
-      <gridHelper args={[16, 16, '#333333', '#333333']} />
     </>
   );
 }
