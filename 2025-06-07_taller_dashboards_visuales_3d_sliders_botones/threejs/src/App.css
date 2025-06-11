@@ -1,0 +1,140 @@
+/* Reset básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: 'Arial', sans-serif;
+}
+
+/* Estilos para el canvas 3D */
+canvas {
+  display: block;
+  touch-action: none;
+}
+
+/* Personalización del panel Leva */
+[data-leva-root] {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  z-index: 1000 !important;
+  max-height: calc(100vh - 40px) !important;
+  overflow-y: auto !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(10px) !important;
+  background: rgba(26, 26, 46, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Estilos para los controles Leva */
+[data-leva-root] .leva-c-kULEGz {
+  background: rgba(26, 26, 46, 0.95) !important;
+  color: #ffffff !important;
+}
+
+[data-leva-root] .leva-c-dhzjTW {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-leva-root] .leva-c-czpGCr {
+  background: rgba(40, 40, 60, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 6px !important;
+}
+
+/* Scrollbar personalizada */
+[data-leva-root]::-webkit-scrollbar {
+  width: 8px;
+}
+
+[data-leva-root]::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+[data-leva-root]::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+[data-leva-root]::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Estilos para información del proyecto */
+.info-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  color: white;
+  font-family: 'Arial', sans-serif;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 15px 20px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 300px;
+}
+
+.info-panel h3 {
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.info-panel p {
+  font-size: 12px;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+/* Animaciones suaves */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.info-panel {
+  animation: fadeIn 1s ease-out;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  [data-leva-root] {
+    right: 10px !important;
+    top: 10px !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  .info-panel {
+    bottom: 10px;
+    left: 10px;
+    padding: 10px 15px;
+    font-size: 12px;
+  }
+
+  .info-panel h3 {
+    font-size: 14px;
+  }
+
+  .info-panel p {
+    font-size: 11px;
+  }
+}
+
