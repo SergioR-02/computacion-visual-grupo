@@ -4,20 +4,12 @@ import mediapipe as mp
 import numpy as np
 import pygame
 import time
-from typing import Optional, Tuple, Dict
-import os
+from typing import Tuple
 
 class PoseActionDetector:
     """Detector de acciones basado en postura corporal usando MediaPipe"""
     
     def __init__(self, enable_sound: bool = True):
-        """
-        Inicializar el detector de acciones
-        
-        Args:
-            enable_sound: Habilitar efectos de sonido
-        """
-        # Inicializar MediaPipe Pose
         self.mp_pose = mp.solutions.pose
         self.pose = self.mp_pose.Pose(
             static_image_mode=False,
@@ -28,7 +20,6 @@ class PoseActionDetector:
         )
         self.mp_drawing = mp.solutions.drawing_utils
         
-        # Configuración de sonido
         self.enable_sound = enable_sound
         if enable_sound:
             try:
@@ -40,18 +31,15 @@ class PoseActionDetector:
         else:
             self.sound_enabled = False
         
-        # Estado de acciones
         self.current_action = "Desconocido"
         self.last_action = ""
         self.action_confidence = 0.0
         self.action_start_time = time.time()
         self.action_duration = 0.0
         
-        # Historial para detección de caminata
         self.foot_positions_history = []
         self.max_history = 10
         
-        # Colores para visualización
         self.colors = {
             'green': (0, 255, 0),
             'red': (0, 0, 255),
@@ -60,16 +48,13 @@ class PoseActionDetector:
             'purple': (255, 0, 255),
             'orange': (0, 165, 255),
             'white': (255, 255, 255),
-            'black': (0, 0, 0)
-        }
+            'black': (0, 0, 0)        }
     
     def play_sound_effect(self, action: str):
-        """Reproducir efecto de sonido para una acción"""
         if not self.sound_enabled:
             return
             
         try:
-            # Generar tono simple basado en la acción
             frequency_map = {
                 'brazos_arriba': 800,
                 'sentado': 400,
@@ -79,21 +64,18 @@ class PoseActionDetector:
             }
             
             frequency = frequency_map.get(action, 440)
-            duration = 0.1  # 100ms
+            duration = 0.1
             sample_rate = 22050
             
-            # Generar onda sinusoidal
             frames = int(duration * sample_rate)
             arr = np.zeros(frames)
             
             for i in range(frames):
                 arr[i] = np.sin(2 * np.pi * frequency * i / sample_rate)
             
-            # Convertir a formato de audio
             arr = (arr * 32767).astype(np.int16)
             stereo_arr = np.array([arr, arr]).T
             
-            # Reproducir sonido
             sound = pygame.sndarray.make_sound(stereo_arr)
             sound.play()
             
@@ -101,14 +83,12 @@ class PoseActionDetector:
             print(f"Error reproduciendo sonido: {e}")
     
     def get_landmark_position(self, landmarks, landmark_id: int, width: int, height: int) -> Tuple[int, int]:
-        """Obtener posición de un landmark en coordenadas de píxeles"""
         if landmarks and len(landmarks.landmark) > landmark_id:
             landmark = landmarks.landmark[landmark_id]
             return int(landmark.x * width), int(landmark.y * height)
         return 0, 0
     
     def calculate_distance(self, point1: Tuple[int, int], point2: Tuple[int, int]) -> float:
-        """Calcular distancia euclidiana entre dos puntos"""
         return np.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
     
     def detect_arms_up(self, landmarks, width: int, height: int) -> bool:
