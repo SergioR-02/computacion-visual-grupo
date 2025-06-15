@@ -19,8 +19,7 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(true)
   const [animationSpeed, setAnimationSpeed] = useState(1)
   const [key, setKey] = useState(0)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [position, setPosition] = useState({ x: 20, y: 20 })
+  const [isCollapsed, setIsCollapsed] = useState(false)  const [position, setPosition] = useState({ x: 20, y: 20 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [soundEnabled, setSoundEnabled] = useState(true) // Control de sonido
@@ -249,7 +248,8 @@ function App() {
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
-          />            <ErrorBoundary>
+          />
+            <ErrorBoundary>
             <AnimatedModel
               key={`${selectedModel}-${key}`}
               modelPath={selectedModel}
@@ -260,7 +260,6 @@ function App() {
               animationSpeed={animationSpeed}
               soundEnabled={soundEnabled}
               soundVolume={soundVolume}
-              onSoundEvent={setCurrentSoundEvent}
             />
           </ErrorBoundary>
           
@@ -268,14 +267,11 @@ function App() {
             <planeGeometry args={[20, 20]} />
             <shadowMaterial opacity={0.3} />
           </mesh>
-            <Environment preset="sunset" />
+          
+          <Environment preset="sunset" />
           <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
         </Canvas>
-      </div>      {/* Indicador de eventos de sonido */}
-      <SoundEventIndicator 
-        soundEvent={currentSoundEvent}
-        onComplete={() => setCurrentSoundEvent(null)}
-      />
+      </div>
     </div>
   )
 }

@@ -3,7 +3,6 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment } from '@react-three/drei'
 import AnimatedModel from './components/AnimatedModel'
 import ErrorBoundary from './components/ErrorBoundary'
-import SoundEventIndicator from './components/SoundEventIndicator'
 import './App.css'
 
 const models = [
@@ -23,9 +22,6 @@ function App() {
   const [position, setPosition] = useState({ x: 20, y: 20 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [soundEnabled, setSoundEnabled] = useState(true) // Control de sonido
-  const [soundVolume, setSoundVolume] = useState(0.8) // Volumen global
-  const [currentSoundEvent, setCurrentSoundEvent] = useState(null) // Evento de sonido actual
 
   // Limpiar localStorage al iniciar
   useEffect(() => {
@@ -137,7 +133,9 @@ function App() {
               >
                 {isPlaying ? '⏸️ Pausar' : '▶️ Reproducir'}
               </button>
-            </div>            {/* Control de velocidad */}
+            </div>
+
+            {/* Control de velocidad */}
             <div className="control-section speed-section">
               <h4>⚡ Velocidad</h4>
               <div className="speed-control">
@@ -154,36 +152,6 @@ function App() {
                   <label>3x</label>
                 </div>
                 <div className="speed-value">{animationSpeed.toFixed(1)}x</div>
-              </div>
-            </div>
-
-            {/* Control de sonido */}
-            <div className="control-section sound-section">
-              <h4>🔊 Audio</h4>
-              <div className="sound-controls">
-                <button 
-                  className={`btn ${soundEnabled ? 'btn-active' : ''}`}
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                >
-                  {soundEnabled ? '🔊 Sonido ON' : '🔇 Sonido OFF'}
-                </button>
-                {soundEnabled && (
-                  <div className="volume-control">
-                    <div className="speed-slider-container">
-                      <label>🔈</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={soundVolume}
-                        onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
-                      />
-                      <label>🔊</label>
-                    </div>
-                    <div className="speed-value">{(soundVolume * 100).toFixed(0)}%</div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -249,7 +217,9 @@ function App() {
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
-          />            <ErrorBoundary>
+          />
+          
+          <ErrorBoundary>
             <AnimatedModel
               key={`${selectedModel}-${key}`}
               modelPath={selectedModel}
@@ -258,9 +228,6 @@ function App() {
               setAvailableAnimations={setAvailableAnimations}
               isPlaying={isPlaying}
               animationSpeed={animationSpeed}
-              soundEnabled={soundEnabled}
-              soundVolume={soundVolume}
-              onSoundEvent={setCurrentSoundEvent}
             />
           </ErrorBoundary>
           
@@ -268,14 +235,11 @@ function App() {
             <planeGeometry args={[20, 20]} />
             <shadowMaterial opacity={0.3} />
           </mesh>
-            <Environment preset="sunset" />
+          
+          <Environment preset="sunset" />
           <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
         </Canvas>
-      </div>      {/* Indicador de eventos de sonido */}
-      <SoundEventIndicator 
-        soundEvent={currentSoundEvent}
-        onComplete={() => setCurrentSoundEvent(null)}
-      />
+      </div>
     </div>
   )
 }

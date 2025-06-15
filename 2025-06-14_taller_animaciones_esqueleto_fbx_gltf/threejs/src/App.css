@@ -1,42 +1,413 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.app {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Barra de controles flotante */
+.controls {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 300px;
+  max-height: calc(100vh - 40px);
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid #4fc3f7;
+  border-radius: 15px;
+  backdrop-filter: blur(20px);
+  color: white;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+  padding: 1rem;
+  transition: all 0.3s ease;
+  transform: translateX(0);
+}
+
+.controls.collapsed {
+  transform: translateX(-280px);
+  width: 50px;
+}
+
+.controls.collapsed .controls-layout {
+  display: none;
+}
+
+.canvas-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.controls h3 {
+  margin-bottom: 1rem;
+  color: #4fc3f7;
+  font-size: 1.2rem;
+}
+
+.model-selector {
+  margin-bottom: 1rem;
+}
+
+.model-selector label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.model-selector select {
+  width: 100%;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+}
+
+.model-selector select option {
+  background: #333;
+  color: white;
+}
+
+.model-selector.select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.model-selector.select:hover {
+  border-color: #4fc3f7;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.model-selector.select:focus {
+  outline: none;
+  border-color: #4fc3f7;
+  box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.2);
+}
+
+.model-selector.select option {
+  background: #1a1a1a;
+  color: white;
+  padding: 0.5rem;
+}
+
+.animation-controls {
+  margin-bottom: 1rem;
+}
+
+.animation-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.btn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #4fc3f7, #29b6f6);
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
   text-align: center;
+  box-shadow: 0 3px 10px rgba(79, 195, 247, 0.3);
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.btn:hover {
+  background: linear-gradient(135deg, #29b6f6, #0288d1);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(79, 195, 247, 0.4);
 }
 
-@keyframes logo-spin {
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-active {
+  background: linear-gradient(135deg, #ff6b6b, #ff5252) !important;
+  border-color: #ff6b6b;
+  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4) !important;
+}
+
+.btn-pause {
+  background: linear-gradient(135deg, #ff6b6b, #ff5252);
+  box-shadow: 0 3px 10px rgba(255, 107, 107, 0.3);
+}
+
+.btn-pause.paused {
+  background: linear-gradient(135deg, #51cf66, #4caf50);
+  box-shadow: 0 3px 10px rgba(81, 207, 102, 0.3);
+}
+
+.btn-pause:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+}
+
+.btn-pause.paused:hover {
+  box-shadow: 0 5px 15px rgba(81, 207, 102, 0.4);
+}
+
+.animation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  border-left: 2px solid #4fc3f7;
+}
+
+.info-item strong {
+  color: #4fc3f7;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.info-value {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  text-align: right;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+/* Scrollbar personalizado para la barra de controles */
+.controls::-webkit-scrollbar {
+  width: 8px;
+}
+
+.controls::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.controls::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #4fc3f7, #29b6f6);
+  border-radius: 4px;
+}
+
+.controls::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #29b6f6, #0288d1);
+}
+
+.loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 1.2rem;
+  text-align: center;
+  z-index: 50;
+}
+
+/* Animaciones y responsivo */
+@keyframes fadeIn {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(20px);
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
-.card {
-  padding: 2em;
+.controls {
+  animation: slideInLeft 0.8s ease-out;
 }
 
-.read-the-docs {
-  color: #888;
+.control-section {
+  animation: fadeIn 0.6s ease-out;
 }
+
+/* Responsivo para pantallas pequeñas */
+@media (max-width: 768px) {
+  .controls {
+    width: 250px;
+    top: 10px;
+    left: 10px;
+    max-height: calc(100vh - 20px);
+  }
+  
+  .control-section {
+    padding: 0.75rem;
+  }
+  
+  .control-section h4 {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .controls {
+    width: calc(100vw - 20px);
+    height: auto;
+    position: fixed;
+    top: auto;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    max-height: 40vh;
+    border-radius: 10px;
+  }
+  
+  .controls.collapsed {
+    transform: translateY(calc(100% - 50px));
+    height: 50px;
+  }
+  
+  .toggle-button {
+    top: -15px;
+    right: 50%;
+    transform: translateX(50%);
+  }
+  
+  .controls.collapsed .toggle-button {
+    top: 10px;
+    right: 50%;
+    transform: translateX(50%);
+  }
+  
+  .controls-layout {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 1rem;
+  }
+  
+  .control-section {
+    min-width: 200px;
+    flex-shrink: 0;
+  }
+  
+  .collapsed-title {
+    display: none !important;
+  }
+}
+
+.controls-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+.control-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.control-section:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #4fc3f7;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.control-section h4 {
+  color: #4fc3f7;
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+/* Específico para cada sección - más compacto */
+.model-section {
+  background: linear-gradient(135deg, rgba(79, 195, 247, 0.08) 0%, rgba(116, 75, 162, 0.08) 100%);
+}
+
+.playback-section {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.08) 0%, rgba(255, 195, 113, 0.08) 100%);
+}
+
+.speed-section {
+  background: linear-gradient(135deg, rgba(81, 207, 102, 0.08) 0%, rgba(79, 195, 247, 0.08) 100%);
+}
+
+.sound-section {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.08) 0%, rgba(233, 30, 99, 0.08) 100%);
+}
+
+.animations-section {
+  background: linear-gradient(135deg, rgba(116, 75, 162, 0.08) 0%, rgba(255, 107, 107, 0.08) 100%);
+}
+
+.info-section {
+  background: linear-gradient(135deg, rgba(255, 195, 113, 0.08) 0%, rgba(81, 207, 102, 0.08) 100%);
+}
+
+/* Controles de sonido */
+.sound-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.volume-control {
+  margin-top: 0.5rem;
+}
+
+.volume-control .speed-slider-container {
+  margin-bottom: 0.5rem;
+}
+
+/* Efectos visuales para sonidos */
+@keyframes soundPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.sound-enabled {
+  animation: soundPulse 0.3s ease-in-out;
+}
+

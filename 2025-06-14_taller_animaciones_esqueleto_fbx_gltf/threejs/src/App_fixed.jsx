@@ -23,9 +23,9 @@ function App() {
   const [position, setPosition] = useState({ x: 20, y: 20 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [soundEnabled, setSoundEnabled] = useState(true) // Control de sonido
-  const [soundVolume, setSoundVolume] = useState(0.8) // Volumen global
-  const [currentSoundEvent, setCurrentSoundEvent] = useState(null) // Evento de sonido actual
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [soundVolume, setSoundVolume] = useState(0.8)
+  const [currentSoundEvent, setCurrentSoundEvent] = useState(null)
 
   // Limpiar localStorage al iniciar
   useEffect(() => {
@@ -79,6 +79,13 @@ function App() {
     setCurrentAnimation('')
     setAvailableAnimations([])
     setKey(prev => prev + 1)
+  }
+
+  // Callback para eventos de sonido
+  const handleSoundEvent = (eventData) => {
+    if (soundEnabled) {
+      setCurrentSoundEvent(eventData)
+    }
   }
 
   return (
@@ -137,7 +144,9 @@ function App() {
               >
                 {isPlaying ? '⏸️ Pausar' : '▶️ Reproducir'}
               </button>
-            </div>            {/* Control de velocidad */}
+            </div>
+
+            {/* Control de velocidad */}
             <div className="control-section speed-section">
               <h4>⚡ Velocidad</h4>
               <div className="speed-control">
@@ -229,11 +238,21 @@ function App() {
                   <strong>Velocidad:</strong>
                   <span className="info-value">{animationSpeed.toFixed(1)}x</span>
                 </div>
+                <div className="info-item">
+                  <strong>Sonido:</strong>
+                  <span className="info-value">{soundEnabled ? '🔊 ON' : '🔇 OFF'}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Indicador de eventos de sonido */}
+      <SoundEventIndicator 
+        soundEvent={currentSoundEvent}
+        onComplete={() => setCurrentSoundEvent(null)}
+      />
 
       {/* Canvas 3D - Ahora ocupa toda la pantalla */}
       <div className="canvas-container">
@@ -249,7 +268,9 @@ function App() {
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
-          />            <ErrorBoundary>
+          />
+          
+          <ErrorBoundary>
             <AnimatedModel
               key={`${selectedModel}-${key}`}
               modelPath={selectedModel}
@@ -260,7 +281,7 @@ function App() {
               animationSpeed={animationSpeed}
               soundEnabled={soundEnabled}
               soundVolume={soundVolume}
-              onSoundEvent={setCurrentSoundEvent}
+              onSoundEvent={handleSoundEvent}
             />
           </ErrorBoundary>
           
@@ -268,14 +289,11 @@ function App() {
             <planeGeometry args={[20, 20]} />
             <shadowMaterial opacity={0.3} />
           </mesh>
-            <Environment preset="sunset" />
+          
+          <Environment preset="sunset" />
           <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
         </Canvas>
-      </div>      {/* Indicador de eventos de sonido */}
-      <SoundEventIndicator 
-        soundEvent={currentSoundEvent}
-        onComplete={() => setCurrentSoundEvent(null)}
-      />
+      </div>
     </div>
   )
 }
