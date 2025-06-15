@@ -42,7 +42,9 @@ Crear interfaces gráficas 3D interactivas que permitan al usuario controlar ele
 - [x] **Proyección de sombras**: Cálculo y renderizado de sombras dinámicas
 
 #### 🖥️ **Interfaces de Usuario 3D**
-****
+
+---
+
 - [x] **Controles GUI interactivos**: Sliders, botones, selectores de color
 - [x] **Binding en tiempo real**: Sincronización entre controles y propiedades 3D
 - [x] **Organización de paneles**: Agrupación lógica de controles por funcionalidad
@@ -94,8 +96,6 @@ Crear interfaces gráficas 3D interactivas que permitan al usuario controlar ele
 │   └── Result_slider_buttons.gif
 └── README.md                 # Este archivo
 ```
-
-📎 Sigue la estructura de entregas descrita en la [guía GitLab](./guia_gitlab_computacion_visual.md)
 
 ---
 
@@ -154,15 +154,27 @@ const { scale, color, roughness, metalness, rotationSpeed } = useControls(
 - 🔄 Animaciones y rotaciones automáticas
 - 👁️ Controles de visibilidad y wireframe
 
-> ✅ GIF incluido mostrando la interacción completa del dashboard
-
 ---
 
 ## 🧩 Prompts Usados
 
-No se utilizaron prompts de IA generativa en este taller, ya que se enfoca en el desarrollo de interfaces interactivas 3D usando librerías especializadas.
+Durante el desarrollo de este taller se utilizaron los siguientes prompts para resolver dudas técnicas y obtener mejores prácticas:
 
-📎 Usa buenas prácticas de prompts según la [guía de IA actualizada](./guia_prompts_inteligencias_artificiales_actualizada.md)
+
+
+### 🎛️ **Prompts de Controles e Interactividad:**
+
+- "¿Cómo crear sliders y controles interactivos que modifiquen propiedades de objetos 3D en tiempo real?"
+- "¿Cuáles son las mejores prácticas para organizar controles de Leva en paneles temáticos?"
+
+
+### 🎨 **Prompts de Materiales y Renderizado:**
+
+- "¿Cómo implementar materiales PBR (Standard, Phong, Lambert) con controles dinámicos en Three.js?"
+- "¿Cuáles son las diferencias entre meshStandardMaterial, meshPhongMaterial y meshLambertMaterial?"
+- "¿Cómo controlar roughness, metalness y emissive colors en tiempo real con sliders?"
+- "¿Cómo implementar modo wireframe y controles de transparencia para objetos 3D?"
+
 
 ---
 
@@ -171,13 +183,5 @@ No se utilizaron prompts de IA generativa en este taller, ya que se enfoca en el
 **¿Qué aprendiste o reforzaste con este taller?**
 
 Este taller me permitió profundizar en el ecosistema de React Three Fiber y la creación de interfaces 3D interactivas. Aprendí a integrar controles GUI usando Leva para manipular propiedades de objetos 3D en tiempo real, desde transformaciones básicas hasta propiedades avanzadas de materiales PBR (Physically Based Rendering). También reforcé conceptos de iluminación 3D y cómo diferentes tipos de luces afectan la apariencia de los materiales.
-
-**¿Qué parte fue más compleja o interesante?**
-
-La parte más interesante fue la sincronización en tiempo real entre los controles de la interfaz y las propiedades de los objetos 3D. Implementar un sistema de iluminación completo con múltiples tipos de luces (ambiental, direccional, puntual y de foco) y sus respectivos controles fue particularmente desafiante, especialmente al manejar las sombras y la interacción entre diferentes fuentes de luz.
-
-**¿Qué mejorarías o qué aplicarías en futuros proyectos?**
-
-Para futuros proyectos, me gustaría implementar presets de configuración que permitan guardar y cargar diferentes estados de la escena, añadir más tipos de geometrías y efectos post-procesamiento. También sería interesante integrar controles de animación más avanzados y la posibilidad de importar modelos 3D externos. Este conocimiento es directamente aplicable para crear herramientas de visualización de datos 3D, configuradores de productos, o aplicaciones educativas interactivas.
 
 ---
