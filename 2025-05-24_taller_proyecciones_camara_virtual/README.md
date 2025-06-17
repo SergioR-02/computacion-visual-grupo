@@ -187,21 +187,18 @@ export function useCameraConfig() {
 El GIF muestra claramente:
 
 ### 🎯 Proyección en Perspectiva:
-
 - ✅ **Efecto de profundidad realista**: Los cubos lejanos se ven notablemente más pequeños
 - ✅ **Convergencia de líneas**: El grid muestra líneas convergiendo hacia puntos de fuga
 - ✅ **Campo de visión angular**: Se aprecia el FOV de 50° en la vista
 - ✅ **Sensación de inmersión**: La escena se siente tridimensional y natural
 
 ### 📐 Proyección Ortográfica:
-
 - ✅ **Tamaño uniforme**: Todos los objetos mantienen su tamaño relativo
 - ✅ **Líneas paralelas**: El grid mantiene sus líneas perfectamente paralelas
 - ✅ **Vista técnica**: Ideal para analizar proporciones y distancias reales
 - ✅ **Sin distorsión perspectiva**: Perfecta para planos y diseño técnico
 
 ### 🔄 Elementos Interactivos:
-
 - ✅ **Navegación orbital fluida**: Rotación 360° alrededor de la escena
 - ✅ **Información en tiempo real**: Matrices y parámetros actualizados dinámicamente
 - ✅ **Cambio instantáneo**: Transición inmediata entre tipos de proyección
