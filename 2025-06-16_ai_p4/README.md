@@ -241,9 +241,7 @@ def efecto_bokeh_profundidad(imagen, mapa_profundidad, mascaras, intensidad_blur
 
 ![Pipeline de Visión Computacional](./resultados/DiagramaPipeline.png)
 
-#### RESULTADO YOLO SAM MiDas
-![Pipeline de Visión Computacional](./resultados/DiagramaPipeline.png)
-
+### RESULTADO YOLO SAM MiDas
 
 ![Pipeline de Visión Computacional](./resultados/YoloSam.png)
 ### 🎯 Detecciones YOLO:
