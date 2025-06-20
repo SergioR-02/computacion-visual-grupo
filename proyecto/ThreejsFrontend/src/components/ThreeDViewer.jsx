@@ -151,37 +151,36 @@ const ThreeDViewer = ({ category }) => {
       createModel(category);
     }
   }, [category]);
-
   return (
-    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-4 flex flex-col h-96">
-      <div className="flex items-center justify-between mb-4 ">
+    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-3 lg:p-4 flex flex-col h-full">
+      <div className="flex items-center justify-between mb-3 lg:mb-4">
         <div className="flex items-center space-x-2">
-          <div className="p-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg">
-            <Cube className="h-4 w-4 text-white" />
+          <div className="p-1 lg:p-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg">
+            <Cube className="h-3 lg:h-4 w-3 lg:w-4 text-white" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">Modelo 3D</h3>
+            <h3 className="text-xs lg:text-sm font-semibold text-white">Modelo 3D</h3>
           </div>
         </div>
 
         <div className="flex items-center space-x-1">
           <button
             onClick={resetView}
-            className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors duration-200"
+            className="p-1 lg:p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors duration-200"
             title="Resetear vista"
           >
             <RotateCcw className="h-3 w-3 text-slate-300" />
           </button>
           <button
             onClick={zoomIn}
-            className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors duration-200"
+            className="p-1 lg:p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors duration-200"
             title="Acercar"
           >
             <ZoomIn className="h-3 w-3 text-slate-300" />
           </button>
           <button
             onClick={zoomOut}
-            className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors duration-200"
+            className="p-1 lg:p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors duration-200"
             title="Alejar"
           >
             <ZoomOut className="h-3 w-3 text-slate-300" />
@@ -189,13 +188,13 @@ const ThreeDViewer = ({ category }) => {
         </div>
       </div>
 
-      <div className="relative flex-1">
+      <div className="relative flex-1 min-h-[200px]">
         <div ref={mountRef} className="w-full h-full rounded-xl overflow-hidden" />
 
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-800/80 rounded-xl">
             <div className="text-center">
-              <div className="animate-spin h-6 w-6 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+              <div className="animate-spin h-4 lg:h-6 w-4 lg:w-6 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-2"></div>
               <p className="text-slate-300 text-xs">Cargando...</p>
             </div>
           </div>
@@ -204,7 +203,7 @@ const ThreeDViewer = ({ category }) => {
         {!category && !isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center text-slate-500">
-              <Cube className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <Cube className="h-6 lg:h-8 w-6 lg:w-8 mx-auto mb-2 opacity-50" />
               <p className="text-xs">Sin modelo</p>
             </div>
           </div>
