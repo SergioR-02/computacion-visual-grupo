@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test de Rutas</title>
+</head>
+<body>
+    <h1>Test de Rutas - IA Visual</h1>
+    
+    <h2>Imagen de Prueba:</h2>
+    <img src="./results/images/detection_20250620_231141.jpg" alt="Test Image" style="max-width: 500px;">
+    
+    <h2>Enlaces de Prueba:</h2>
+    <ul>
+        <li><a href="./results/images/detection_20250620_230254.jpg">Imagen 1</a></li>
+        <li><a href="./results/images/detection_20250620_231141.jpg">Imagen 2</a></li>
+        <li><a href="./results/images/detection_20250620_234304.jpg">Imagen 3</a></li>
+        <li><a href="./results/json/detection_20250620_230254.json">JSON 1</a></li>
+        <li><a href="./results/json/detection_20250620_231141.json">JSON 2</a></li>
+        <li><a href="./results/json/detection_20250620_234304.json">JSON 3</a></li>
+    </ul>
+    
+    <h2>Navegación:</h2>
+    <ul>
+        <li><a href="./web/index.html">Página Principal</a></li>
+        <li><a href="./web/simple.html">Página Simple</a></li>
+    </ul>
+    
+    <script>
+        // Test de fetch para JSON
+        fetch('./results/json/detection_20250620_231141.json')
+            .then(response => {
+                console.log('JSON fetch status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('JSON data loaded:', data);
+                document.getElementById('json-status').textContent = '✅ JSON cargado correctamente';
+            })
+            .catch(error => {
+                console.error('JSON fetch error:', error);
+                document.getElementById('json-status').textContent = '❌ Error cargando JSON: ' + error;
+            });
+    </script>
+    
+    <p id="json-status">🔄 Probando carga de JSON...</p>
+</body>
+</html>
