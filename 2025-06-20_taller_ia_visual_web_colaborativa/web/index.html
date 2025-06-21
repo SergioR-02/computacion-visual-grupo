@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 IA Visual Colaborativa - Visualizador de Detecciones</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1><i class="fas fa-eye"></i> IA Visual Colaborativa</h1>
+            <p>Visualizador de detecciones YOLO</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Controls Section -->
+            <section class="controls-section">
+                <div class="card">
+                    <h2><i class="fas fa-cog"></i> Controles</h2>
+                    <div class="controls">
+                        <div class="control-group">
+                            <label for="imageSelect">Seleccionar Imagen:</label>
+                            <select id="imageSelect" class="select-input">
+                                <option value="">Cargando imágenes...</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <button id="loadBtn" class="btn btn-primary" disabled>
+                                <i class="fas fa-upload"></i> Cargar Detección
+                            </button>
+                        </div>
+                        <div class="control-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showLabels" checked>
+                                <span class="checkmark"></span>
+                                Mostrar etiquetas flotantes
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Image and Detection Results -->
+            <section class="results-section">
+                <div class="image-container card">
+                    <h2><i class="fas fa-image"></i> Imagen con Detecciones</h2>
+                    <div class="image-wrapper" id="imageWrapper">
+                        <img id="detectionImage" src="" alt="Imagen de detección" style="display: none;">
+                        <div class="placeholder" id="imagePlaceholder">
+                            <i class="fas fa-image"></i>
+                            <p>Selecciona una imagen para ver las detecciones</p>
+                        </div>
+                        <div id="labelOverlay" class="label-overlay"></div>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="stats-container">
+                    <div class="stat-card" id="totalDetections">
+                        <i class="fas fa-search"></i>
+                        <div class="stat-content">
+                            <h3>0</h3>
+                            <p>Detecciones</p>
+                        </div>
+                    </div>
+                    <div class="stat-card" id="highConfidence">
+                        <i class="fas fa-star"></i>
+                        <div class="stat-content">
+                            <h3>0</h3>
+                            <p>Alta Confianza (>80%)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card" id="uniqueClasses">
+                        <i class="fas fa-tags"></i>
+                        <div class="stat-content">
+                            <h3>0</h3>
+                            <p>Clases Únicas</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Detection Details Table -->
+            <section class="table-section">
+                <div class="card">
+                    <h2><i class="fas fa-table"></i> Detalles de Detecciones</h2>
+                    <div class="table-container">
+                        <table id="detectionsTable" class="detections-table">
+                            <thead>
+                                <tr>
+                                    <th>Clase</th>
+                                    <th>Confianza</th>
+                                    <th>Posición (x, y)</th>
+                                    <th>Tamaño (w × h)</th>
+                                    <th>Área</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detectionsTableBody">
+                                <tr class="no-data">
+                                    <td colspan="5">No hay detecciones para mostrar</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- JSON Data Viewer -->
+            <section class="json-section">
+                <div class="card">
+                    <h2><i class="fas fa-code"></i> Datos JSON</h2>
+                    <button id="toggleJson" class="btn btn-secondary">
+                        <i class="fas fa-eye"></i> Mostrar JSON
+                    </button>
+                    <pre id="jsonViewer" class="json-viewer" style="display: none;"></pre>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Taller Computación Visual - IA Visual Colaborativa</p>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Cargando detecciones...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+{
+  "timestamp": "2025-06-20T23:02:54.430942",
+  "image_path": "data/foto_calle.jpeg",
+  "image_size": {
+    "width": 1200,
+    "height": 535,
+    "channels": 3
+  },
+  "model_info": {
+    "model_name": "YOLOv8",
+    "confidence_threshold": 0.5
+  },
+  "detections_count": 11,
+  "detections": [
+    {
+      "class": "person",
+      "confidence": 0.876,
+      "bbox": {
+        "x1": 131,
+        "y1": 152,
+        "x2": 250,
+        "y2": 447,
+        "width": 118,
+        "height": 295,
+        "center_x": 191,
+        "center_y": 300
+      }
+    },
+    {
+      "class": "person",
+      "confidence": 0.821,
+      "bbox": {
+        "x1": 544,
+        "y1": 225,
+        "x2": 647,
+        "y2": 481,
+        "width": 103,
+        "height": 256,
+        "center_x": 595,
+        "center_y": 353
+      }
+    },
+    {
+      "class": "person",
+      "confidence": 0.818,
+      "bbox": {
+        "x1": 627,
+        "y1": 199,
+        "x2": 724,
+        "y2": 480,
+        "width": 96,
+        "height": 280,
+        "center_x": 676,
+        "center_y": 339
+      }
+    },
+    {
+      "class": "person",
+      "confidence": 0.792,
+      "bbox": {
+        "x1": 1072,
+        "y1": 182,
+        "x2": 1123,
+        "y2": 316,
+        "width": 50,
+        "height": 134,
+        "center_x": 1097,
+        "center_y": 249
+      }
+    },
+    {
+      "class": "car",
+      "confidence": 0.771,
+      "bbox": {
+        "x1": 235,
+        "y1": 215,
+        "x2": 479,
+        "y2": 403,
+        "width": 243,
+        "height": 188,
+        "center_x": 357,
+        "center_y": 309
+      }
+    },
+    {
+      "class": "car",
+      "confidence": 0.683,
+      "bbox": {
+        "x1": 512,
+        "y1": 202,
+        "x2": 661,
+        "y2": 347,
+        "width": 149,
+        "height": 144,
+        "center_x": 587,
+        "center_y": 274
+      }
+    },
+    {
+      "class": "person",
+      "confidence": 0.64,
+      "bbox": {
+        "x1": 1126,
+        "y1": 185,
+        "x2": 1169,
+        "y2": 315,
+        "width": 42,
+        "height": 129,
+        "center_x": 1147,
+        "center_y": 250
+      }
+    },
+    {
+      "class": "car",
+      "confidence": 0.621,
+      "bbox": {
+        "x1": 449,
+        "y1": 182,
+        "x2": 569,
+        "y2": 326,
+        "width": 119,
+        "height": 144,
+        "center_x": 509,
+        "center_y": 254
+      }
+    },
+    {
+      "class": "truck",
+      "confidence": 0.591,
+      "bbox": {
+        "x1": 417,
+        "y1": 142,
+        "x2": 544,
+        "y2": 231,
+        "width": 127,
+        "height": 89,
+        "center_x": 481,
+        "center_y": 187
+      }
+    },
+    {
+      "class": "truck",
+      "confidence": 0.532,
+      "bbox": {
+        "x1": 798,
+        "y1": 96,
+        "x2": 965,
+        "y2": 303,
+        "width": 167,
+        "height": 206,
+        "center_x": 881,
+        "center_y": 199
+      }
+    },
+    {
+      "class": "bus",
+      "confidence": 0.511,
+      "bbox": {
+        "x1": 797,
+        "y1": 96,
+        "x2": 965,
+        "y2": 302,
+        "width": 168,
+        "height": 206,
+        "center_x": 881,
+        "center_y": 199
+      }
+    }
+  ],
+  "classes_detected": [
+    "car",
+    "person",
+    "truck",
+    "bus"
+  ]
+}
