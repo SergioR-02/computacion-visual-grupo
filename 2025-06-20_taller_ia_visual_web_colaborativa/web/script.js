@@ -58,8 +58,7 @@ class DetectionViewer {    constructor() {
             // Lista de imágenes disponibles en el proyecto
             const images = [
                 'detection_20250620_230254.jpg',
-                'detection_20250620_231141.jpg',
-                'detection_20250620_234304.jpg'
+                'detection_20250621_001524.jpg'
             ];
             
             this.populateImageSelect(images);
