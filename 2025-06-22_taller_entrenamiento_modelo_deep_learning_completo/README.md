@@ -93,10 +93,10 @@ train_losses_ft, val_losses_ft, train_accs_ft, val_accs_ft = train_model(
 
 ### 📌 Curvas de Entrenamiento y Validación
 
-![Curva de Pérdida y Precisión](resultados/image2.png)
+![Curva de Pérdida y Precisión](resultados/CruvaPerdida.png)
 
 
-![Curva de Pérdida y Precisión](resultados/image3.png)
+![Curva de Pérdida y Precisión](resultados/curvaPrecision.png)
 
 ### 📌 Matriz de Confusión
 ![Matriz de Confusión](resultados/matriz.png)
@@ -105,7 +105,7 @@ train_losses_ft, val_losses_ft, train_accs_ft, val_accs_ft = train_model(
 ![Comparación de Precisiones](resultados/compracionModelos.png)
 
 ### 📌 Resultados de K-Fold Cross Validation
-![Resultados K-Fold](resultados/compracionModelos.png)
+![Resultados K-Fold](resultados/K-Fold.png)
 
 ### 📌 Comparación de Métricas
 
