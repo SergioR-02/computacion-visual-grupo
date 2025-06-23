@@ -98,11 +98,11 @@ R1, R2, P1, P2, Q, roi_left, roi_right = cv2.stereoRectify(
 ## 📊 Resultados y Análisis
 
 ### 📌 Patrón de Calibración
-![Patrón de Calibración](./resutados/Resultados_Calibraciones.gif)
+![Patrón de Calibración](./resultados/Resultados_Calibraciones.gif)
 
 ### 📌 Calibración de Una Cámara y dos Camaras
 
-![Detección de Esquinas](./resutados/Resultados_Visualizacion_unaCamara-DosCamras.gif)
+![Detección de Esquinas](./resultados/Resultados_Visualizacion_unaCamara-DosCamras.gif)
 
 
 
