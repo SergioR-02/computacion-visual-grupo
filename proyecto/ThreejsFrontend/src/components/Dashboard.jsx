@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import CameraModule from './CameraModule';
 import ImageAnalysisModule from './ImageAnalysisModule';
 import ThreeDViewer from './ThreeDViewer';
