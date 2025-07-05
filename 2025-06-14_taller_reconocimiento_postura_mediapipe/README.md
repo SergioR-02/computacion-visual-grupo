@@ -1,366 +1,215 @@
 # 🧪 Taller - Reconocimiento de Acciones Simples con Detección de Postura
 
-## 🔍 Objetivo del taller
+## 📅 Fecha
 
-Implementar el reconocimiento de acciones simples (como sentarse, levantar brazos o caminar frente a cámara) usando MediaPipe Pose para detectar la postura corporal. El objetivo es utilizar puntos clave del cuerpo (landmarks) para interpretar la acción y responder visual o sonoramente.
-
-## 🛠️ Instalación
-
-### Paso 1: Instalar dependencias
-
-```bash
-cd python
-pip install -r requirements.txt
-```
-
-O ejecutar el archivo batch:
-
-```bash
-./install.bat
-```
-
-### Dependencias necesarias:
-
-- `mediapipe>=0.10.0` - Para detección de postura corporal
-- `opencv-python>=4.8.0` - Para captura de video y visualización
-- `numpy>=1.24.0` - Para cálculos matemáticos
-- `pygame>=2.5.0` - Para efectos de sonido
-
-## 🚀 Ejecución
-
-### Opción 1: Ejemplo Simple (Recomendado para comenzar)
-
-```bash
-python simple_example.py
-```
-
-Este ejemplo incluye detección básica de:
-
-- 🙌 Brazos arriba
-- 🪑 Persona sentada
-- 🧍 De pie
-
-### Opción 2: Demo Interactivo
-
-```bash
-python interactive_demo.py
-```
-
-Demo guiado paso a paso que te enseña cada acción:
-
-- Instrucciones claras en pantalla
-- Retroalimentación visual
-- Progreso de detección en tiempo real
-
-### Opción 3: Sistema Completo
-
-```bash
-python main.py
-```
-
-Sistema completo con detección avanzada de:
-
-- 🙌 Brazos arriba
-- 🪑 Sentado
-- 🚶 Caminando
-- 🤸 Agachado
-- � Brazos extendidos
-- �🧍 De pie
-
-## 🎯 Acciones Detectables
-
-### 1. 🙌 Brazos Arriba
-
-- **Descripción**: Levantar ambos brazos por encima de la cabeza
-- **Condición**: Ambas muñecas por encima de la nariz
-- **Lógica**: `left_wrist_y < nose_y AND right_wrist_y < nose_y`
-
-### 2. 🪑 Sentado
-
-- **Descripción**: Persona sentada en una silla
-- **Condición**: Caderas cerca del nivel de las rodillas
-- **Lógica**: `abs(hip_y - knee_y) < threshold`
-
-### 3. 🚶 Caminando
-
-- **Descripción**: Movimiento de caminar frente a la cámara
-- **Condición**: Variación en posición de los pies
-- **Lógica**: Análisis de historial de movimiento de pies
-
-### 4. 🤸 Agachado
-
-- **Descripción**: Posición en cuclillas
-- **Condición**: Torso comprimido, rodillas dobladas
-- **Lógica**: `torso_height < threshold AND knees_bent`
-
-### 5. 🤲 Brazos Extendidos
-
-- **Descripción**: Brazos extendidos horizontalmente
-- **Condición**: Muñecas al nivel de hombros, separadas horizontalmente
-- **Lógica**: `vertical_diff < threshold AND horizontal_diff > threshold`
-
-### 6. 🧍 De pie
-
-- **Descripción**: Postura neutral sin acciones específicas
-- **Condición**: Estado por defecto cuando no se detectan otras acciones
-
-## 🧠 Ejemplos de Reglas Condicionales
-
-```python
-# Detección de brazos arriba
-if left_wrist_y < nose_y and right_wrist_y < nose_y:
-    print("¡Ambos brazos arriba!")
-
-# Detección de persona sentada
-elif abs(left_hip_y - left_knee_y) < threshold:
-    print("Persona sentada")
-
-# Detección de brazos extendidos
-elif (abs(left_wrist_y - left_shoulder_y) < vertical_threshold and
-      abs(left_wrist_x - left_shoulder_x) > horizontal_threshold):
-    print("Brazos extendidos")
-
-# Detección de agachado
-elif torso_height < normal_torso_threshold:
-    print("Persona agachada")
-```
-
-## 📊 Características del Sistema
-
-### 🎥 Detección en Tiempo Real
-
-- ✅ Captura de webcam a 30 FPS
-- ✅ Procesamiento de 33 landmarks corporales
-- ✅ Visualización de conexiones del esqueleto
-- ✅ Indicadores visuales por acción
-
-### 🎯 Sistema de Confianza
-
-- ✅ Cálculo de confianza por acción (0.0 - 1.0)
-- ✅ Filtrado por visibilidad de landmarks
-- ✅ Detección robusta con umbrales ajustables
-- ✅ Historial para acciones de movimiento
-
-### 🎨 Interfaz Visual
-
-- ✅ Colores diferentes por tipo de landmark
-- ✅ Información en tiempo real en pantalla
-- ✅ Efecto espejo para facilidad de uso
-- ✅ Barra de progreso para confirmación
-
-### 🔊 Efectos de Sonido
-
-- ✅ Tonos únicos por cada acción
-- ✅ Activación/desactivación con tecla 's'
-- ✅ Generación procedural de audio
-
-## 🎮 Controles
-
-### Sistema Principal (main.py)
-
-- **'q'**: Salir del programa
-- **'s'**: Activar/desactivar sonidos
-- **'r'**: Reiniciar historial de movimiento
-
-### Demo Interactivo (interactive_demo.py)
-
-- **'q'**: Salir del programa
-- **'r'**: Reiniciar demo completo
-- **'n'**: Saltar a siguiente acción
-
-## 🔧 Personalización
-
-### Ajustar Sensibilidad
-
-En `main.py`, puedes modificar los umbrales:
-
-```python
-# Umbrales para detección de sentado
-sitting_threshold = height * 0.15  # Ajustar para mayor/menor sensibilidad
-
-# Umbral para detección de caminata
-movement_threshold = width * 0.02  # Reducir para mayor sensibilidad
-
-# Confianza mínima para MediaPipe
-min_detection_confidence=0.5  # Aumentar para mayor precisión
-min_tracking_confidence=0.5   # Aumentar para tracking más estable
-```
-
-### Agregar Nuevas Acciones
-
-1. Crear función de detección en la clase `PoseActionDetector`
-2. Agregar llamada en `detect_action()`
-3. Agregar color y sonido en los mapeos correspondientes
-
-### Ejemplo de Nueva Acción:
-
-```python
-def detect_jumping(self, landmarks, width: int, height: int) -> bool:
-    """Detectar si la persona está saltando"""
-    if not landmarks:
-        return False
-
-    # Obtener posiciones de pies
-    left_foot_x, left_foot_y = self.get_landmark_position(
-        landmarks, self.mp_pose.PoseLandmark.LEFT_FOOT_INDEX, width, height)
-    right_foot_x, right_foot_y = self.get_landmark_position(
-        landmarks, self.mp_pose.PoseLandmark.RIGHT_FOOT_INDEX, width, height)
-
-    # Lógica: pies por encima del nivel normal (simplificado)
-    normal_ground_level = height * 0.9  # 90% de la altura
-
-    return left_foot_y < normal_ground_level and right_foot_y < normal_ground_level
-```
-
-## 🔊 Sistema de Sonido
-
-El sistema incluye generación procedural de tonos únicos para cada acción:
-
-- **🙌 Brazos Arriba**: 800 Hz (tono agudo)
-- **🪑 Sentado**: 400 Hz (tono medio)
-- **🤸 Agachado**: 300 Hz (tono grave)
-- **🤲 Brazos Extendidos**: 600 Hz (tono medio-agudo)
-- **🚶 Caminando**: 500 Hz (tono medio)
-
-## 🐛 Solución de Problemas
-
-### ❌ Error de Cámara
-
-```
-Error: No se pudo abrir la cámara
-```
-
-**Soluciones**:
-
-- Verificar que no haya otras aplicaciones usando la webcam
-- Cambiar el índice de cámara: `cv2.VideoCapture(1)` en lugar de `(0)`
-- Reiniciar la aplicación
-
-### ❌ MediaPipe no detecta postura
-
-**Causas posibles**:
-
-- Iluminación insuficiente
-- Persona muy lejos de la cámara
-- Postura parcialmente fuera del encuadre
-
-**Soluciones**:
-
-- Mejorar iluminación del ambiente
-- Acercarse a la cámara (distancia recomendada: 1-2 metros)
-- Reducir `min_detection_confidence` a 0.3
-- Asegurar que todo el cuerpo esté visible
-
-### ❌ Detección incorrecta o inestable
-
-**Soluciones**:
-
-- Ajustar umbrales en las funciones de detección
-- Mejorar condiciones de iluminación
-- Usar fondo uniforme y contrastante
-- Calibrar para tu altura/proporciones específicas
-- Aumentar `min_tracking_confidence` para mayor estabilidad
-
-### ❌ Error de instalación de dependencias
-
-```
-ERROR: Could not build wheels for mediapipe
-```
-
-**Soluciones**:
-
-- Actualizar pip: `python -m pip install --upgrade pip`
-- Instalar Visual Studio Build Tools (Windows)
-- Usar Python 3.8-3.11 (versiones compatibles)
-
-## 📈 Métricas y Rendimiento
-
-- **FPS típico**: 15-30 (dependiendo del hardware)
-- **Latencia**: < 100ms para detección
-- **Precisión**: ~85-95% en condiciones óptimas
-- **Landmarks procesados**: 33 puntos corporales
-- **Memoria RAM**: ~200-500MB durante ejecución
-
-## 🎓 Conceptos Técnicos
-
-### Landmarks de MediaPipe Pose
-
-El sistema utiliza 33 puntos clave del cuerpo:
-
-- **0**: Nariz
-- **11, 12**: Hombros (izquierdo, derecho)
-- **13, 14**: Codos (izquierdo, derecho)
-- **15, 16**: Muñecas (izquierda, derecha)
-- **23, 24**: Caderas (izquierda, derecha)
-- **25, 26**: Rodillas (izquierda, derecha)
-- **31, 32**: Pies (izquierdo, derecho)
-
-### Algoritmos de Detección
-
-1. **Detección basada en posición relativa**: Comparar coordenadas Y de landmarks
-2. **Detección basada en distancia**: Calcular distancias euclidianas
-3. **Detección temporal**: Análisis de historial de movimientos
-4. **Detección de ángulos**: Calcular ángulos entre segmentos corporales
-
-## 🔬 Extensiones Sugeridas
-
-### Nivel Básico
-
-1. **Contador de repeticiones** - Contar flexiones, sentadillas
-2. **Detector de posturas de yoga** - Asanas básicas
-3. **Sistema de puntuación** - Gamificación de ejercicios
-
-### Nivel Intermedio
-
-4. **Análisis de simetría corporal** - Corrección postural
-5. **Detección de ejercicios específicos** - Rutinas de gimnasio
-6. **Integración con base de datos** - Guardar progreso
-
-### Nivel Avanzado
-
-7. **Reconocimiento de gestos de manos** (MediaPipe Hands)
-8. **Detección de expresiones faciales** (MediaPipe Face)
-9. **Control de dispositivos IoT** - Domótica por gestos
-10. **Análisis biomecánico** - Métricas deportivas avanzadas
-
-## 🏆 Desafíos Propuestos
-
-### 🥉 Bronce
-
-- Implementar detección de "manos en la cintura"
-- Agregar contador de tiempo por acción
-- Crear sistema de puntuación simple
-
-### 🥈 Plata
-
-- Detectar secuencias de movimientos (ej: saludo completo)
-- Implementar filtros de suavizado para detección más estable
-- Agregar calibración automática por usuario
-
-### 🥇 Oro
-
-- Crear sistema de entrenamiento personal interactivo
-- Implementar análisis de calidad de movimiento
-- Desarrollar API REST para integración con otras aplicaciones
-
-## 📚 Referencias y Recursos
-
-### Documentación Oficial
-
-- [MediaPipe Pose](https://google.github.io/mediapipe/solutions/pose.html)
-- [OpenCV Python](https://opencv-python-tutroals.readthedocs.io/)
-- [Pygame Documentation](https://www.pygame.org/docs/)
-
-### Tutoriales Adicionales
-
-- [MediaPipe Python Examples](https://github.com/google/mediapipe/tree/master/mediapipe/python)
-- [Computer Vision with Python](https://opencv-python-tutroals.readthedocs.io/en/latest/)
-
-### Datasets y Modelos
-
-- [COCO Pose Dataset](https://cocodataset.org/#keypoints-2020)
-- [Human3.6M Dataset](http://vision.imar.ro/human3.6m/)
+`2025-06-25` – Taller de Reconocimiento de Acciones Simples con Detección de Postura
 
 ---
 
-**¡Felicitaciones!** 🎉 Has completado el taller de reconocimiento de acciones simples con detección de postura. Este proyecto te introduce a los conceptos fundamentales de visión por computadora y análisis de movimiento humano.
+## 🎯 Objetivo del Taller
+
+Implementar el reconocimiento de acciones simples (como sentarse, levantar brazos o caminar frente a cámara) usando MediaPipe Pose para detectar la postura corporal. El objetivo es utilizar puntos clave del cuerpo (landmarks) para interpretar la acción y responder visual o sonoramente.
+
+---
+
+## 🧠 Conceptos Aprendidos
+
+Lista de conceptos aplicados en este taller:
+
+- [x] **Detección de Postura con MediaPipe Pose** - Extracción de 33 landmarks corporales en 3D.
+- [x] **Análisis Geométrico de Landmarks** - Cálculo de ángulos y distancias entre puntos clave para interpretar posturas.
+- [x] **Clasificación de Acciones Basada en Reglas** - Implementación de lógica para identificar acciones como "sentado" o "brazos arriba".
+- [x] **Procesamiento de Video en Tiempo Real** - Uso de OpenCV para capturar, procesar y mostrar el video de la cámara.
+- [x] **Manejo de Estados y Umbrales** - Definición de umbrales para activar la detección de acciones y evitar falsos positivos.
+- [x] **Retroalimentación Visual** - Dibujo del esqueleto y muestra de texto en pantalla para informar la acción detectada.
+- [x] **Programación Orientada a Objetos** - Estructuración del código en clases para una mejor organización y escalabilidad.
+
+---
+
+## 🔧 Herramientas y Entornos
+
+**Python** (Entorno principal):
+
+- `mediapipe==0.10.9` - Detección de postura y landmarks corporales.
+- `opencv-python==4.8.1.78` - Captura de cámara, procesamiento de imágenes y visualización.
+- `numpy==1.24.3` - Operaciones numéricas para el análisis de landmarks.
+
+**Sistemas de Reconocimiento**:
+
+- **MediaPipe Pose** - Modelo de ML para la detección de 33 puntos clave del cuerpo humano en tiempo real.
+
+📌 Instalación automática disponible con `pip install -r requirements.txt` desde el directorio `python/`.
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+2025-06-14_taller_reconocimiento_postura_mediapipe/
+├── python/                         # Entorno principal de desarrollo
+│   ├── main.py                     # 🎮 Aplicación principal que ejecuta la detección
+│   ├── interactive_demo.py         # (Opcional) Script para demostraciones interactivas
+│   └── requirements.txt            # 📦 Lista de dependencias
+├── results/                        # 📸 Evidencias visuales del funcionamiento
+│   └── reconocimiento_postura_result.gif # 🎬 GIF demostrativo
+└── README.md                       # 📚 Documentación completa
+```
+
+📎 Estructura limpia que separa el código fuente, los resultados y la documentación.
+
+---
+
+## 🧪 Implementación
+
+### 🔹 Flujo de Reconocimiento de Acciones
+
+El sistema opera siguiendo un flujo de trabajo claro para identificar acciones a partir del video:
+
+1.  **Captura de Video**: Se utiliza OpenCV para capturar el feed de la cámara web cuadro por cuadro.
+2.  **Detección de Postura**: Cada cuadro se procesa con MediaPipe Pose para detectar los 33 landmarks corporales.
+3.  **Análisis de Landmarks**: Si se detecta una postura, se extraen las coordenadas de los puntos clave necesarios.
+4.  **Clasificación de Acción**: Se aplica una lógica basada en reglas y umbrales para determinar si se está realizando una acción conocida.
+5.  **Visualización**: El cuadro original se anota con el esqueleto de la postura y el nombre de la acción detectada, y se muestra en pantalla.
+
+### 🔹 Acciones Implementadas
+
+| Acción                    | Lógica de Detección                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Brazos Arriba**         | Se verifica si las coordenadas Y de las muñecas (`15`, `16`) están por encima de las de los hombros (`11`, `12`).         |
+| **Sentado**               | Se calcula el ángulo de las rodillas y las caderas. Si ambos ángulos son inferiores a 110 grados, se considera "sentado". |
+| **Caminando en el sitio** | Se monitorea la variación vertical de los tobillos (`27`, `28`) para detectar un movimiento alternado y rítmico.          |
+| **Inclinación Lateral**   | Se mide la pendiente de la línea formada por los hombros. Si supera un umbral, se detecta una inclinación.                |
+
+### 🔹 Código Relevante
+
+**Cálculo de ángulo entre tres puntos**:
+
+```python
+def calcular_angulo(a, b, c):
+    """Calcula el ángulo entre tres puntos (en grados)."""
+    a = np.array(a)  # Primer punto
+    b = np.array(b)  # Punto medio (vértice)
+    c = np.array(c)  # Tercer punto
+
+    radians = np.arctan2(c[1] - b[1], c[0] - b[0]) - np.arctan2(a[1] - b[1], a[0] - b[0])
+    angle = np.abs(radians * 180.0 / np.pi)
+
+    if angle > 180.0:
+        angle = 360 - angle
+
+    return angle
+```
+
+**Lógica principal de detección**:
+
+```python
+def detectar_accion(landmarks):
+    """Clasifica una acción basada en la configuración de landmarks."""
+    # Extraer landmarks relevantes
+    hombro_izq = [landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x, landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y]
+    codo_izq = [landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].x, landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].y]
+    muñeca_izq = [landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].x, landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].y]
+
+    # Calcular ángulo del codo izquierdo como ejemplo
+    angulo = calcular_angulo(hombro_izq, codo_izq, muñeca_izq)
+
+    # Lógica de clasificación (ejemplo simple)
+    if angulo > 160:
+        return "Brazo Izquierdo Extendido"
+    elif angulo < 40:
+        return "Brazo Izquierdo Flexionado"
+
+    # ... Lógica para otras acciones como "Sentado" ...
+
+    return "Neutral"
+```
+
+---
+
+## 📊 Resultados Visuales
+
+### 📌 GIF Demostrativo del Funcionamiento
+
+![Reconocimiento de Postura con MediaPipe](./results/reconocimiento_postura_result.gif)
+
+**El GIF demuestra:**
+
+- 👤 **Detección en tiempo real** de los 33 landmarks corporales.
+- 🦴 **Visualización del esqueleto** superpuesto en la imagen de la cámara.
+- 💪 **Reconocimiento de "Brazos Arriba"** cuando el usuario levanta ambos brazos.
+- 🧘 **Detección de "Sentado"** cuando el usuario se sienta en una silla.
+- 🚶 **Identificación de "Caminando"** al simular caminar en el sitio.
+- 💬 **Etiqueta de texto** en la esquina superior izquierda que muestra la acción detectada dinámicamente.
+
+### 🎬 **Características del Sistema:**
+
+- **Alta velocidad**: El sistema procesa el video fluidamente gracias a la eficiencia de MediaPipe.
+- **Robustez**: La detección funciona desde diferentes ángulos y distancias moderadas.
+- **Bajo consumo de recursos**: No requiere hardware especializado, funciona en CPUs modernas.
+- **Extensible**: La arquitectura basada en reglas facilita la adición de nuevas acciones personalizadas.
+
+---
+
+## 🧩 Prompts Usados
+
+### ✅ **Prompts de Desarrollo Utilizados**
+
+#### 1. **Prompt Inicial de Arquitectura**
+
+```text
+"Crea un script en Python que use OpenCV para capturar video de la webcam y MediaPipe Pose para detectar y dibujar los landmarks de la postura en tiempo real. La estructura debe estar en una clase para mantener el código organizado."
+```
+
+**Resultado**: Clase base con el bucle principal de OpenCV y la inicialización de MediaPipe Pose.
+
+#### 2. **Prompt para Lógica de Detección**
+
+```text
+"Escribe una función que tome los 33 landmarks de MediaPipe Pose como entrada y determine si la persona está 'sentada'. Para ello, calcula el ángulo de las articulaciones de la cadera y la rodilla. Si ambos ángulos son menores a 110 grados, debe devolver 'Sentado'."
+```
+
+**Resultado**: Una función de `calcular_angulo` y la lógica específica para detectar la acción de sentarse.
+
+#### 3. **Prompt para Detección de Brazos Arriba**
+
+```text
+"Implementa una función que detecte si el usuario tiene los 'brazos arriba'. La condición es que las coordenadas 'y' de ambas muñecas sean menores que las coordenadas 'y' de los hombros correspondientes."
+```
+
+**Resultado**: Lógica simple y eficiente para comparar las posiciones verticales de muñecas y hombros.
+
+#### 4. **Prompt para Visualización de Resultados**
+
+```text
+"Modifica el script para que, además de dibujar el esqueleto, muestre el nombre de la acción detectada en la esquina superior izquierda de la ventana de video. El texto debe ser claro y visible."
+```
+
+**Resultado**: Uso de la función `cv2.putText` para superponer el estado actual en el fotograma de video.
+
+#### 5. **Prompt para Estructura de Proyecto y README**
+
+```text
+"Genera una estructura de proyecto recomendada para una aplicación de reconocimiento de postura con Python. Incluye un archivo README.md documentando el objetivo, las herramientas, la implementación y los resultados, con ejemplos de código y un GIF demostrativo."
+```
+
+**Resultado**: Este mismo archivo `README.md` que estás leyendo y la organización de carpetas sugerida.
+
+---
+
+## 💬 Reflexión Final
+
+**¿Qué te pareció traducir movimientos corporales en datos analizables?**
+
+Es fascinante ver cómo un movimiento humano, algo que percibimos de forma tan natural, puede descomponerse en un conjunto de coordenadas y ángulos. La capacidad de MediaPipe para abstraer la complejidad del cuerpo humano en 33 puntos clave es increíblemente poderosa. Al principio, definir las "reglas" para una acción como "sentarse" se siente como tratar de enseñarle a una máquina a entender un concepto muy humano, lo cual es un desafío muy interesante.
+
+**¿Qué parte fue más compleja o interesante?**
+
+La parte más compleja fue definir umbrales que funcionaran de manera robusta. Un umbral de ángulo que funciona para una persona puede no ser ideal para otra, o puede variar según el ángulo de la cámara. Esto requiere ajuste fino y pruebas. Lo más interesante fue, sin duda, el momento "eureka" en que la lógica funciona y la etiqueta en la pantalla refleja correctamente el movimiento que estás realizando. Es una conexión muy directa entre tu acción física y la respuesta del programa.
+
+**¿Qué mejorarías o qué aplicarías en futuros proyectos?**
+
+Para mejorar, en lugar de reglas fijas, se podría entrenar un modelo de aprendizaje automático (como una red neuronal recurrente o LSTM) que aprenda a reconocer acciones a partir de secuencias de landmarks. Esto permitiría detectar acciones más complejas y dinámicas (como saludar, aplaudir o diferentes tipos de ejercicios). Esta misma tecnología se puede aplicar a proyectos de fisioterapia virtual, control de videojuegos mediante el cuerpo (exergaming), análisis de rendimiento deportivo o sistemas de seguridad para detectar caídas en personas mayores. La base creada en este taller es un excelente punto de partida para todas esas aplicaciones.
+
+---
+
+

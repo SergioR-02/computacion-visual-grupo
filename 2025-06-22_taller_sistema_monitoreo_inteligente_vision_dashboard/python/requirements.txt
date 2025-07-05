@@ -1,0 +1,8 @@
+opencv-python>=4.5.0
+numpy>=1.20.0
+matplotlib>=3.4.0
+pandas>=1.3.0
+ultralytics>=8.0.0  # For YOLOv8, comment out if using cvlib
+# cvlib>=0.2.7  # Alternative to YOLOv8
+# tensorflow>=2.0.0  # Required by cvlib
+Pillow>=8.0.0  # For image processing
