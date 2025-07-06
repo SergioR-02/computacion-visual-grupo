@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, Image as ImageIcon, CheckCircle, Loader } from 'lucide-react';
+import { useState } from 'react';
+import { Upload, Image as ImageIcon, CheckCircle, Loader, Zap } from 'lucide-react';
 
 const ImageAnalysisModule = ({ onDetection }) => {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -11,7 +11,9 @@ const ImageAnalysisModule = ({ onDetection }) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       setSelectedImage(e.target.result);
-      analyzeImage();
+      // No analizar automáticamente, solo cargar la imagen
+      setIsAnalyzing(false);
+      setAnalysisComplete(false);
     };
     reader.readAsDataURL(file);
   };
@@ -57,7 +59,7 @@ const ImageAnalysisModule = ({ onDetection }) => {
       </div>
 
       <div
-        className={`flex-1 border-2 border-dashed rounded-lg transition-all duration-300 min-h-[180px] lg:min-h-0 ${
+        className={`flex-1 border-2 border-dashed rounded-lg transition-all duration-300 min-h-[200px] max-h-[400px] overflow-hidden ${
           dragOver
             ? 'border-purple-400 bg-purple-500/10'
             : 'border-slate-600 hover:border-purple-400 hover:bg-purple-500/5'
@@ -69,12 +71,31 @@ const ImageAnalysisModule = ({ onDetection }) => {
         }}
         onDragLeave={() => setDragOver(false)}
       >        {selectedImage ? (
-          <div className="relative h-full">
+          <div className="relative h-full min-h-[200px] flex items-center justify-center">
             <img
               src={selectedImage}
               alt="Uploaded for analysis"
-              className="w-full h-full object-cover rounded-lg"
+              className="max-w-full max-h-full object-contain rounded-lg"
+              style={{ 
+                width: 'auto', 
+                height: 'auto',
+                maxWidth: '100%',
+                maxHeight: '100%'
+              }}
             />
+
+            {/* Botón de analizar superpuesto cuando la imagen está cargada pero no analizada */}
+            {!isAnalyzing && !analysisComplete && (
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-lg">
+                <button
+                  onClick={analyzeImage}
+                  className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center space-x-2"
+                >
+                  <Zap className="h-5 w-5" />
+                  <span>Analizar Imagen</span>
+                </button>
+              </div>
+            )}
 
             {isAnalyzing && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
@@ -121,17 +142,29 @@ const ImageAnalysisModule = ({ onDetection }) => {
         )}
       </div>
 
-      {selectedImage && !isAnalyzing && (
+      {selectedImage && (
         <div className="mt-2 lg:mt-3 flex flex-col sm:flex-row justify-between items-center space-y-1 sm:space-y-0">
           <button
             onClick={() => {
               setSelectedImage(null);
               setAnalysisComplete(false);
+              setIsAnalyzing(false);
             }}
             className="text-slate-400 hover:text-white font-medium text-xs lg:text-sm"
           >
             Subir otra imagen
           </button>
+
+          {/* Botón de analizar en la parte inferior cuando la imagen está cargada pero no analizada */}
+          {!isAnalyzing && !analysisComplete && (
+            <button
+              onClick={analyzeImage}
+              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center space-x-2 text-xs lg:text-sm"
+            >
+              <Zap className="h-4 w-4" />
+              <span>Analizar</span>
+            </button>
+          )}
 
           {analysisComplete && (
             <div className="flex items-center space-x-1 text-green-400">
