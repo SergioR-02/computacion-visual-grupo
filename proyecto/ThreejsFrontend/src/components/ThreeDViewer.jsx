@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Cuboid as Cube, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import * as THREE from 'three';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 
 const ThreeDViewer = ({ category }) => {
   const mountRef = useRef(null);
@@ -12,6 +14,19 @@ const ThreeDViewer = ({ category }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const categoryModels = {
+    trash_gray: {
+      objPath: '/models/trash_can/Trash_gray/Trash_Bin_on_Wheels_0705233925_texture_obj/Trash_Bin_on_Wheels_0705233925_texture.obj',
+      mtlPath: '/models/trash_can/Trash_gray/Trash_Bin_on_Wheels_0705233925_texture_obj/Trash_Bin_on_Wheels_0705233925_texture.mtl'
+    },
+    trash_white: {
+      objPath: '/models/trash_can/Trash_white/Trash_Bin_on_Wheels_0706000745_texture_obj/Trash_Bin_on_Wheels_0706000745_texture.obj',
+      mtlPath: '/models/trash_can/Trash_white/Trash_Bin_on_Wheels_0706000745_texture_obj/Trash_Bin_on_Wheels_0706000745_texture.mtl'
+    },
+    trash_green: {
+      objPath: '/models/trash_can/Trash_green/Trash_0705231552_texture_obj/Trash_0705231552_texture.obj',
+      mtlPath: '/models/trash_can/Trash_green/Trash_0705231552_texture_obj/Trash_0705231552_texture.mtl'
+    },
+    // Mantener los modelos anteriores para compatibilidad
     plastico: () => new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8),
     vidrio: () => new THREE.CylinderGeometry(0.25, 0.4, 1.5, 6),
     papel: () => new THREE.BoxGeometry(1, 0.1, 1.4),
@@ -19,6 +34,10 @@ const ThreeDViewer = ({ category }) => {
   };
 
   const categoryColors = {
+    trash_gray: 0x6b7280,
+    trash_white: 0xf8fafc,
+    trash_green: 0x10b981,
+    // Mantener los colores anteriores para compatibilidad
     plastico: 0x10b981,
     vidrio: 0x3b82f6,
     papel: 0xf59e0b,
@@ -27,6 +46,11 @@ const ThreeDViewer = ({ category }) => {
 
   const initScene = () => {
     if (!mountRef.current) return;
+
+    // Eliminar canvas existente si ya hay uno
+    if (rendererRef.current && rendererRef.current.domElement) {
+      mountRef.current.removeChild(rendererRef.current.domElement);
+    }
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1e293b);
@@ -38,7 +62,8 @@ const ThreeDViewer = ({ category }) => {
       0.1,
       1000
     );
-    camera.position.z = 3;
+    camera.position.set(1, 1, 9); // Posición ligeramente elevada para mejor vista
+    camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -74,6 +99,75 @@ const ThreeDViewer = ({ category }) => {
 
     setIsLoading(true);
 
+    // Verificar si es una caneca de basura (modelo OBJ)
+    if (categoryModels[category] && typeof categoryModels[category] === 'object' && categoryModels[category].objPath) {
+      const { objPath, mtlPath } = categoryModels[category];
+      
+      const mtlLoader = new MTLLoader();
+      mtlLoader.load(
+        mtlPath,
+        (materials) => {
+          materials.preload();
+          
+          const objLoader = new OBJLoader();
+          objLoader.setMaterials(materials);
+          objLoader.load(
+            objPath,
+            (object) => {
+              // Calcular el bounding box para centrar el modelo
+              const box = new THREE.Box3().setFromObject(object);
+              const center = box.getCenter(new THREE.Vector3());
+              const size = box.getSize(new THREE.Vector3());
+              
+              // Centrar el objeto
+              object.position.x = -center.x;
+              object.position.y = -center.y;
+              object.position.z = -center.z;
+              
+              // Ajustar escala basada en el tamaño del modelo
+              const maxDimension = Math.max(size.x, size.y, size.z);
+              const targetSize = 7; // Tamaño objetivo en unidades de Three.js
+              const scale = targetSize / maxDimension;
+              object.scale.setScalar(scale);
+              
+              // Habilitar sombras para todos los meshes del objeto
+              object.traverse((child) => {
+                if (child.isMesh) {
+                  child.castShadow = true;
+                  child.receiveShadow = true;
+                }
+              });
+              
+              sceneRef.current.add(object);
+              meshRef.current = object;
+              setIsLoading(false);
+            },
+            (progress) => {
+              console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+            },
+            (error) => {
+              console.error('Error loading OBJ model:', error);
+              // Fallback a geometría básica en caso de error
+              createBasicGeometry(category);
+            }
+          );
+        },
+        (progress) => {
+          console.log('Loading MTL progress:', (progress.loaded / progress.total * 100) + '%');
+        },
+        (error) => {
+          console.error('Error loading MTL material:', error);
+          // Fallback a geometría básica en caso de error
+          createBasicGeometry(category);
+        }
+      );
+    } else {
+      // Usar geometría básica para categorías que no son canecas
+      createBasicGeometry(category);
+    }
+  };
+
+  const createBasicGeometry = (category) => {
     setTimeout(() => {
       const geometry = categoryModels[category]?.() || new THREE.BoxGeometry(1, 1, 1);
       const material = new THREE.MeshPhongMaterial({
@@ -93,8 +187,8 @@ const ThreeDViewer = ({ category }) => {
   const animate = () => {
     if (rendererRef.current && sceneRef.current && cameraRef.current) {
       if (meshRef.current) {
+        // Solo rotar sobre el eje Y para mantener el modelo derecho
         meshRef.current.rotation.y += 0.01;
-        meshRef.current.rotation.x += 0.005;
       }
 
       rendererRef.current.render(sceneRef.current, cameraRef.current);
@@ -104,7 +198,7 @@ const ThreeDViewer = ({ category }) => {
 
   const resetView = () => {
     if (cameraRef.current) {
-      cameraRef.current.position.set(0, 0, 3);
+      cameraRef.current.position.set(0, 1, 4);
       cameraRef.current.lookAt(0, 0, 0);
     }
   };

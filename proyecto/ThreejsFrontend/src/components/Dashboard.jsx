@@ -23,7 +23,40 @@ const Dashboard = () => {
           </h1>
           <p className="text-gray-600 text-sm lg:text-base">
             Utiliza nuestras herramientas de IA para identificar y aprender sobre el reciclaje
-          </p>        </div>        {/* Layout responsivo - stack en móvil, grid en desktop */}
+          </p>
+          
+          {/* Botones de prueba para canecas de basura */}
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm font-medium text-blue-900 mb-2">Prueba modelos 3D de canecas:</p>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setSelectedCategory('trash_gray')}
+                className="px-3 py-1 bg-gray-500 text-white rounded-md text-sm hover:bg-gray-600 transition-colors"
+              >
+                Caneca Gris
+              </button>
+              <button
+                onClick={() => setSelectedCategory('trash_white')}
+                className="px-3 py-1 bg-gray-100 text-gray-800 border border-gray-300 rounded-md text-sm hover:bg-gray-200 transition-colors"
+              >
+                Caneca Blanca
+              </button>
+              <button
+                onClick={() => setSelectedCategory('trash_green')}
+                className="px-3 py-1 bg-green-500 text-white rounded-md text-sm hover:bg-green-600 transition-colors"
+              >
+                Caneca Verde
+              </button>
+              <button
+                onClick={() => setSelectedCategory('')}
+                className="px-3 py-1 bg-red-500 text-white rounded-md text-sm hover:bg-red-600 transition-colors"
+              >
+                Limpiar
+              </button>
+            </div>
+            <p className="text-xs text-blue-700 mt-1">Categoría actual: {selectedCategory || 'Ninguna'}</p>
+          </div>
+        </div>        {/* Layout responsivo - stack en móvil, grid en desktop */}
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-4 min-h-[300px] h-auto max-h-[650px] lg:h-auto lg:max-h-[650px]">{/* Panel Izquierdo - 3D Viewer - Se muestra debajo en móvil */}          <div className="order-3 lg:order-1 lg:col-span-3">
             <div className="h-40 lg:h-full max-h-[650px]">
               <ThreeDViewer category={selectedCategory} />
