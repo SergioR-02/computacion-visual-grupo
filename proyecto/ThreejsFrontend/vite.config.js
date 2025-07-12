@@ -37,7 +37,6 @@ export default defineConfig({
   
   // Optimizaciones de desarrollo
   optimizeDeps: {
-    include: ['three', '@react-three/fiber', '@react-three/drei', 'gsap'],
-    exclude: ['lucide-react']
+    include: ['three', '@react-three/fiber', '@react-three/drei', 'gsap', 'lucide-react']
   }
 })

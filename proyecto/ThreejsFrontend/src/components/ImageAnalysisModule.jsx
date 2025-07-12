@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Upload, Image as ImageIcon, CheckCircle, Loader, Zap } from 'lucide-react';
+import { Upload, Image as ImageIcon, CheckCircle, Loader, Zap, AlertCircle, Lightbulb, Leaf, BarChart3, Recycle } from 'lucide-react';
 
 const ImageAnalysisModule = ({ onDetection }) => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleImageUpload = (file) => {
     const reader = new FileReader();
@@ -14,23 +16,62 @@ const ImageAnalysisModule = ({ onDetection }) => {
       // No analizar automáticamente, solo cargar la imagen
       setIsAnalyzing(false);
       setAnalysisComplete(false);
+      setAnalysisResult(null);
+      setError(null);
     };
     reader.readAsDataURL(file);
   };
 
-  const analyzeImage = () => {
+  const analyzeImage = async () => {
     setIsAnalyzing(true);
     setAnalysisComplete(false);
+    setError(null);
+    setAnalysisResult(null);
 
-    // Simulación de análisis (mock)
-    setTimeout(() => {
-      const mockResults = [
-        { object: 'Botella de Vidrio', category: 'vidrio', confidence: 0.92 }
-      ];
-      onDetection(mockResults);
+    try {
+      // Convertir imagen a base64
+      const base64Data = selectedImage;
+      
+      // Enviar al backend
+      const response = await fetch('http://localhost:5000/classify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: base64Data
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setAnalysisResult(result.result);
+        
+        // Formatear resultado para el callback onDetection con toda la información del backend
+        const formattedResults = [{
+          object: result.result.category_name,
+          category: result.result.category,
+          confidence: result.result.confidence,
+          confidence_percentage: result.result.confidence_percentage,
+          original_class: result.result.original_class,
+          inference_time_ms: result.result.inference_time_ms,
+          advice: result.result.advice,
+          has_chatgpt_advice: result.result.has_chatgpt_advice,
+          backend_result: result.result // Incluir resultado completo del backend
+        }];
+        
+        onDetection(formattedResults);
+        setAnalysisComplete(true);
+      } else {
+        setError(result.error || 'Error al analizar la imagen');
+      }
+    } catch (error) {
+      console.error('Error al conectar con el servidor:', error);
+      setError('Error de conexión. Asegúrate de que el servidor backend esté funcionando en http://localhost:5000');
+    } finally {
       setIsAnalyzing(false);
-      setAnalysisComplete(true);
-    }, 2000);
+    }
   };
 
   const handleDrop = (e) => {
@@ -106,12 +147,22 @@ const ImageAnalysisModule = ({ onDetection }) => {
               </div>
             )}
 
-            {analysisComplete && (
+            {analysisComplete && analysisResult && (
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute top-2 left-2 bg-green-500/90 text-white px-2 py-1 rounded-md text-xs font-medium">
-                  Botella de Vidrio (92%)
+                  {analysisResult.category_name} ({analysisResult.confidence_percentage}%)
                 </div>
                 <div className="absolute top-1/4 left-1/4 w-16 lg:w-20 h-20 lg:h-24 border-2 border-green-400 rounded"></div>
+              </div>
+            )}
+
+            {error && (
+              <div className="absolute inset-0 bg-red-500/50 flex items-center justify-center rounded-lg">
+                <div className="text-center text-white p-4">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                  <p className="font-medium text-sm mb-1">Error</p>
+                  <p className="text-xs">{error}</p>
+                </div>
               </div>
             )}
           </div>
@@ -149,6 +200,8 @@ const ImageAnalysisModule = ({ onDetection }) => {
               setSelectedImage(null);
               setAnalysisComplete(false);
               setIsAnalyzing(false);
+              setAnalysisResult(null);
+              setError(null);
             }}
             className="text-slate-400 hover:text-white font-medium text-xs lg:text-sm"
           >
@@ -166,14 +219,25 @@ const ImageAnalysisModule = ({ onDetection }) => {
             </button>
           )}
 
-          {analysisComplete && (
+          {analysisComplete && analysisResult && (
             <div className="flex items-center space-x-1 text-green-400">
               <CheckCircle className="h-3 lg:h-4 w-3 lg:w-4" />
-              <span className="font-medium text-xs lg:text-sm">Completado</span>
+              <span className="font-medium text-xs lg:text-sm">
+                {analysisResult.category_name} - {analysisResult.confidence_percentage}%
+              </span>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center space-x-1 text-red-400">
+              <AlertCircle className="h-3 lg:h-4 w-3 lg:w-4" />
+              <span className="font-medium text-xs lg:text-sm">Error</span>
             </div>
           )}
         </div>
       )}
+
+      
     </div>  );
 };
 

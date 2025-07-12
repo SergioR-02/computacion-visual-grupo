@@ -7,13 +7,64 @@ const CameraModule = ({ onDetection }) => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [error, setError] = useState(null);
   const [facingMode, setFacingMode] = useState('user'); // 'user' (frontal) o 'environment' (trasera)
+  const [detectionResult, setDetectionResult] = useState(null);
   const webcamRef = useRef(null);
 
-  const mockDetection = () => {
-    const mockResults = [
-      { object: 'Plástico PET', category: 'plastico', confidence: 0.94 }
-    ];
-    onDetection(mockResults);
+  const performDetection = async () => {
+    try {
+      // Capturar imagen desde la webcam
+      const imageSrc = webcamRef.current.getScreenshot();
+      
+      if (!imageSrc) {
+        console.error('No se pudo capturar la imagen');
+        return;
+      }
+      
+      // Enviar al backend
+      const response = await fetch('http://localhost:5000/classify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: imageSrc
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Formatear resultado para el callback onDetection con toda la información del backend
+        const formattedResults = [{
+          object: result.result.category_name,
+          category: result.result.category,
+          confidence: result.result.confidence,
+          confidence_percentage: result.result.confidence_percentage,
+          original_class: result.result.original_class,
+          inference_time_ms: result.result.inference_time_ms,
+          advice: result.result.advice,
+          has_chatgpt_advice: result.result.has_chatgpt_advice,
+          backend_result: result.result // Incluir resultado completo del backend
+        }];
+        
+        setDetectionResult(formattedResults[0]);
+        onDetection(formattedResults);
+      } else {
+        console.error('Error del backend:', result.error);
+        // Fallback con datos mock si falla
+        const mockResults = [
+          { object: 'Error de conexión', category: 'unknown', confidence: 0.0 }
+        ];
+        onDetection(mockResults);
+      }
+    } catch (error) {
+      console.error('Error al conectar con el servidor:', error);
+      // Fallback con datos mock si falla
+      const mockResults = [
+        { object: 'Error de conexión', category: 'unknown', confidence: 0.0 }
+      ];
+      onDetection(mockResults);
+    }
   };
 
   // Configuración de la webcam
@@ -29,10 +80,10 @@ const CameraModule = ({ onDetection }) => {
     setIsActive(true);
     setError(null);
     
-    // Simular detección después de 3 segundos
+    // Realizar detección real después de 3 segundos
     setTimeout(() => {
       setIsDetecting(true);
-      mockDetection();
+      performDetection();
     }, 3000);
   }, []);
 
@@ -53,7 +104,14 @@ const CameraModule = ({ onDetection }) => {
     setError(null);
     setIsActive(false);
     setIsDetecting(false);
+    setDetectionResult(null);
     // La webcam se reiniciará automáticamente
+  };
+
+  // Limpiar detección y permitir nueva
+  const clearDetection = () => {
+    setDetectionResult(null);
+    setIsDetecting(false);
   };
 
   // Detener cámara
@@ -123,20 +181,37 @@ const CameraModule = ({ onDetection }) => {
         </div>
 
         {/* Overlays de detección */}
-        {isDetecting && (
+        {isDetecting && !detectionResult && (
           <>
             <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-2 lg:top-4 left-2 lg:left-4 bg-emerald-500/90 text-white px-2 lg:px-3 py-1 rounded-lg text-xs lg:text-sm font-medium">
-                Plástico PET (94%)
+              <div className="absolute top-2 lg:top-4 left-2 lg:left-4 bg-blue-500/90 text-white px-2 lg:px-3 py-1 rounded-lg text-xs lg:text-sm font-medium">
+                Analizando...
               </div>
-              <div className="absolute top-1/4 left-1/4 w-24 lg:w-32 h-32 lg:h-40 border-2 border-emerald-400 rounded animate-pulse"></div>
+              <div className="absolute top-1/4 left-1/4 w-24 lg:w-32 h-32 lg:h-40 border-2 border-blue-400 rounded animate-pulse"></div>
             </div>
 
-            <div className="absolute top-2 lg:top-4 right-2 lg:right-4 flex items-center space-x-1 lg:space-x-2 text-emerald-400">
+            <div className="absolute top-2 lg:top-4 right-2 lg:right-4 flex items-center space-x-1 lg:space-x-2 text-blue-400">
               <Activity className="h-3 lg:h-4 w-3 lg:w-4 animate-pulse" />
               <span className="text-xs lg:text-sm font-medium">Detectando...</span>
             </div>
           </>
+        )}
+
+        {/* Resultado de la detección */}
+        {detectionResult && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-2 lg:top-4 left-2 lg:left-4 bg-emerald-500/90 text-white px-2 lg:px-3 py-1 rounded-lg text-xs lg:text-sm font-medium">
+              {detectionResult.object} ({Math.round(detectionResult.confidence * 100)}%)
+            </div>
+            <div className="absolute top-1/4 left-1/4 w-24 lg:w-32 h-32 lg:h-40 border-2 border-emerald-400 rounded"></div>
+            
+            {detectionResult.has_chatgpt_advice && (
+              <div className="absolute top-2 lg:top-4 right-2 lg:right-4 flex items-center space-x-1 bg-blue-500/90 text-white px-2 py-1 rounded-lg">
+                <span className="text-xs">🤖</span>
+                <span className="text-xs font-medium">IA</span>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -149,6 +224,16 @@ const CameraModule = ({ onDetection }) => {
           <RefreshCw className="h-4 w-4" />
           <span>Cambiar cámara</span>
         </button>
+
+        {detectionResult && (
+          <button
+            onClick={clearDetection}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center space-x-2 text-sm"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span>Nueva detección</span>
+          </button>
+        )}
 
         <button
           onClick={stopCamera}

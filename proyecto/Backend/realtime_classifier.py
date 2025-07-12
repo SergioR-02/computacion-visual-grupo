@@ -1,10 +1,15 @@
 import cv2
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import load_model
 import json
 import time
 from datetime import datetime
+
+# Importar load_model de forma compatible
+try:
+    from tensorflow.keras.models import load_model
+except ImportError:
+    from keras.models import load_model
 
 class GarbageClassifierRealTime:
     def __init__(self, model_path='best_garbage_model.h5', labels_path='class_labels.json'):
