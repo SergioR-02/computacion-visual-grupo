@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # Configuración
 IMG_SIZE = 224
 BATCH_SIZE = 32
-EPOCHS = 30  # Aumentado de 20 a 30 para mejor convergencia
+EPOCHS = 50  # Aumentado de 20 a 30 para mejor convergencia
 LEARNING_RATE = 0.0001
 
 # Directorio del dataset

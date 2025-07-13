@@ -10,6 +10,7 @@ import json
 import time
 import os
 from datetime import datetime
+import requests  # para descargar imágenes desde URLs
 
 # Importar load_model de forma compatible
 try:
@@ -209,17 +210,28 @@ class PhotoClassifier:
         print(f"📁 Revisa las imágenes en: {self.output_dir}/")
     
     def classify_existing_image(self, image_path):
-        """Clasificar una imagen existente"""
-        if not os.path.exists(image_path):
-            print(f"❌ Imagen no encontrada: {image_path}")
-            return
-        
-        # Cargar imagen
-        image = cv2.imread(image_path)
-        if image is None:
-            print(f"❌ Error cargando imagen: {image_path}")
-            return
-        
+        """Clasificar una imagen existente o desde URL"""
+        # Detectar si es una URL
+        if image_path.startswith(('http://', 'https://')):
+            try:
+                resp = requests.get(image_path)
+                image_data = np.frombuffer(resp.content, np.uint8)
+                image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
+                if image is None:
+                    print(f"❌ Error decodificando imagen desde URL: {image_path}")
+                    return
+            except Exception as e:
+                print(f"❌ Error descargando imagen: {e}")
+                return
+        else:
+            if not os.path.exists(image_path):
+                print(f"❌ Imagen no encontrada: {image_path}")
+                return
+            image = cv2.imread(image_path)
+            if image is None:
+                print(f"❌ Error cargando imagen: {image_path}")
+                return
+
         print(f"🖼️ Clasificando imagen: {image_path}")
         
         # Clasificar
@@ -227,7 +239,7 @@ class PhotoClassifier:
         
         # Añadir información a la imagen
         annotated_image = self.add_text_to_image(image, result)
-        
+
         # Guardar resultado
         basename = os.path.splitext(os.path.basename(image_path))[0]
         output_path = f"{self.output_dir}/classified_{basename}.jpg"
