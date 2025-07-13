@@ -6,85 +6,43 @@ guardando los resultados como imágenes en lugar de mostrar video en tiempo real
 import cv2
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
+import json
 import time
 import os
 from datetime import datetime
 
+# Importar load_model de forma compatible
+try:
+    from tensorflow.keras.models import load_model
+except ImportError:
+    from keras.models import load_model
+
 class PhotoClassifier:
-    def __init__(self):
+    def __init__(self, model_path='best_garbage_model.h5', labels_path='class_labels.json'):
         """Inicializar clasificador de fotos"""
-        print("🚀 Cargando modelo pre-entrenado...")
+        print("🚀 Cargando modelo especializado de basura...")
         
-        # Cargar MobileNetV2 pre-entrenado en ImageNet
-        self.model = MobileNetV2(weights='imagenet', include_top=True)
+        # Cargar modelo especializado de basura
+        try:
+            self.model = load_model(model_path)
+            print(f"✅ Modelo cargado: {model_path}")
+        except Exception as e:
+            print(f"❌ Error cargando modelo: {e}")
+            print("🏋️ Ejecuta primero train_model.py para entrenar el modelo")
+            exit(1)
+        
+        # Cargar etiquetas
+        try:
+            with open(labels_path, 'r') as f:
+                self.class_labels = json.load(f)
+            print(f"✅ Etiquetas cargadas: {list(self.class_labels.values())}")
+        except Exception as e:
+            print(f"❌ Error cargando etiquetas: {e}")
+            exit(1)
+        
+        # Configuración
         self.img_size = 224
-        
-        # Mapeo de clases ImageNet a nuestras categorías de basura
-        self.garbage_mapping = {
-            # Plásticos
-            'plastic_bag': 'plastic',
-            'bottle': 'plastic', 
-            'water_bottle': 'plastic',
-            'pop_bottle': 'plastic',
-            'plastic_bag': 'plastic',
-            'bag': 'plastic',
-            
-            # Metales
-            'can': 'metal',
-            'cellular_telephone': 'metal',
-            'remote_control': 'metal',
-            'iPod': 'metal',
-            'battery': 'battery',
-            'nail': 'metal',
-            'screw': 'metal',
-            
-            # Vidrio
-            'wine_bottle': 'glass',
-            'beer_bottle': 'glass',
-            'bottle': 'glass',
-            
-            # Papel
-            'paper_towel': 'paper',
-            'tissue': 'paper',
-            'envelope': 'paper',
-            'menu': 'paper',
-            'book': 'paper',
-            'newspaper': 'paper',
-            
-            # Cartón
-            'cardboard': 'cardboard',
-            'carton': 'cardboard',
-            'box': 'cardboard',
-            
-            # Ropa
-            'shoe': 'shoes',
-            'sneaker': 'shoes',
-            'boot': 'shoes',
-            'sock': 'clothes',
-            'jean': 'clothes',
-            'shirt': 'clothes',
-            'dress': 'clothes',
-            'hat': 'clothes',
-            'cap': 'clothes',
-            
-            # Orgánico/Biológico
-            'banana': 'biological',
-            'apple': 'biological',
-            'orange': 'biological',
-            'lemon': 'biological',
-            'mushroom': 'biological',
-            'broccoli': 'biological',
-            'pizza': 'biological',
-            'sandwich': 'biological',
-            'hot_dog': 'biological',
-            'hamburger': 'biological',
-            
-            # Basura general
-            'ashtray': 'trash',
-            'cigarette': 'trash'
-        }
+        self.confidence_threshold = 0.5
         
         # Crear directorio para guardar fotos
         self.output_dir = "classified_photos"
@@ -94,41 +52,20 @@ class PhotoClassifier:
         print("✅ Modelo cargado - ¡Listo para clasificar fotos!")
     
     def preprocess_image(self, image):
-        """Preprocesar imagen para el modelo"""
+        """Preprocesar imagen para el modelo especializado"""
         # Redimensionar
         resized = cv2.resize(image, (self.img_size, self.img_size))
         
-        # Convertir a RGB
-        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        # Normalizar
+        normalized = resized.astype('float32') / 255.0
         
-        # Expandir dimensiones
-        batch = np.expand_dims(rgb, axis=0)
+        # Añadir dimensión batch
+        batch = np.expand_dims(normalized, axis=0)
         
-        # Preprocesar para MobileNetV2
-        preprocessed = preprocess_input(batch)
-        
-        return preprocessed
+        return batch
     
-    def map_to_garbage_class(self, imagenet_predictions):
-        """Mapear predicciones de ImageNet a clases de basura"""
-        # Decodificar predicciones top-5
-        decoded = decode_predictions(imagenet_predictions, top=5)[0]
-        
-        # Buscar correspondencias con nuestras clases de basura
-        for _, class_name, confidence in decoded:
-            class_lower = class_name.lower().replace('_', ' ')
-            
-            # Buscar palabras clave
-            for key, garbage_class in self.garbage_mapping.items():
-                if key in class_lower or any(word in class_lower for word in key.split('_')):
-                    return garbage_class, confidence, class_name, decoded
-        
-        # Si no se encuentra correspondencia, usar la predicción más alta
-        _, best_class, best_conf = decoded[0]
-        return 'unknown', best_conf, best_class, decoded
-    
-    def classify_image(self, image):
-        """Clasificar una imagen"""
+    def predict(self, image):
+        """Realizar predicción con el modelo especializado"""
         # Preprocesar
         processed_image = self.preprocess_image(image)
         
@@ -137,14 +74,25 @@ class PhotoClassifier:
         predictions = self.model.predict(processed_image, verbose=0)
         inference_time = (time.time() - start_time) * 1000  # en ms
         
-        # Mapear a clases de basura
-        garbage_class, confidence, original_class, all_predictions = self.map_to_garbage_class(predictions)
+        # Obtener clase predicha y confianza
+        predicted_class_idx = np.argmax(predictions[0])
+        confidence = predictions[0][predicted_class_idx]
+        
+        # Obtener nombre de la clase
+        class_name = self.class_labels[str(predicted_class_idx)]
+        
+        return class_name, confidence, inference_time, predictions[0]
+    
+    def classify_image(self, image):
+        """Clasificar una imagen"""
+        # Realizar predicción
+        class_name, confidence, inference_time, all_predictions = self.predict(image)
         
         return {
-            'garbage_class': garbage_class,
+            'garbage_class': class_name,
             'confidence': confidence,
             'inference_time': inference_time,
-            'original_class': original_class,
+            'original_class': class_name,  # Ya no hay mapeo, es directo
             'all_predictions': all_predictions
         }
     
@@ -161,7 +109,7 @@ class PhotoClassifier:
         cv2.addWeighted(overlay, 0.7, annotated, 0.3, 0, annotated)
         
         # Texto principal
-        if result['garbage_class'] != 'unknown':
+        if result['confidence'] > self.confidence_threshold:
             text = f"BASURA: {result['garbage_class'].upper()}"
             cv2.putText(annotated, text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
         else:
@@ -172,8 +120,8 @@ class PhotoClassifier:
         conf_text = f"Confianza: {result['confidence']:.2%}"
         cv2.putText(annotated, conf_text, (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         
-        # Clase original
-        orig_text = f"Detectado como: {result['original_class']}"
+        # Clase detectada
+        orig_text = f"Clase: {result['garbage_class']}"
         cv2.putText(annotated, orig_text, (20, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
         
         # Tiempo de inferencia
@@ -182,8 +130,12 @@ class PhotoClassifier:
         
         # Top 3 predicciones
         cv2.putText(annotated, "Top 3 predicciones:", (20, 170), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        for i, (_, class_name, conf) in enumerate(result['all_predictions'][:3]):
-            pred_text = f"{i+1}. {class_name}: {conf:.1%}"
+        top_3_indices = np.argsort(result['all_predictions'])[-3:][::-1]
+        
+        for i, idx in enumerate(top_3_indices):
+            class_name_top = self.class_labels[str(idx)]
+            conf_top = result['all_predictions'][idx]
+            pred_text = f"{i+1}. {class_name_top}: {conf_top:.1%}"
             cv2.putText(annotated, pred_text, (30, 185 + i*12), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
         
         return annotated
@@ -243,7 +195,6 @@ class PhotoClassifier:
             # Mostrar resultado
             print(f"   ✅ Resultado: {result['garbage_class'].upper()}")
             print(f"      Confianza: {result['confidence']:.2%}")
-            print(f"      Detectado como: {result['original_class']}")
             print(f"      Tiempo: {result['inference_time']:.1f}ms")
             print(f"      📁 Guardado: {annotated_filename}")
             print()
@@ -285,14 +236,13 @@ class PhotoClassifier:
         # Mostrar resultado
         print(f"✅ Resultado: {result['garbage_class'].upper()}")
         print(f"   Confianza: {result['confidence']:.2%}")
-        print(f"   Detectado como: {result['original_class']}")
         print(f"   📁 Guardado: {output_path}")
 
 def main():
     """Función principal"""
-    print("🗑️ CLASIFICADOR DE BASURA POR FOTOS")
-    print("=" * 50)
-    print("Este clasificador toma fotos y las analiza usando IA.")
+    print("🗑️ CLASIFICADOR DE BASURA POR FOTOS (MODELO ESPECIALIZADO)")
+    print("=" * 60)
+    print("Este clasificador usa un modelo entrenado específicamente para basura.")
     print()
     
     try:
