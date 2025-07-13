@@ -42,9 +42,9 @@ class GarbageClassifierRealTime:
         self.colors = {
             'biological': (0, 255, 0),    # Verde
             'cardboard': (139, 69, 19),   # Marrón
-            'glass': (0, 255, 255),       # Cyan
+            'glass': (0, 150, 255),       # Cyan
             'metal': (128, 128, 128),     # Gris
-            'paper': (255, 255, 255),     # Blanco
+            'paper': (0, 0, 255),     # Blanco
             'plastic': (0, 0, 255),       # Azul
             'trash': (255, 0, 0)          # Rojo
         }
