@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # Configuración
 IMG_SIZE = 224
 BATCH_SIZE = 32
-EPOCHS = 20
+EPOCHS = 30  # Aumentado de 20 a 30 para mejor convergencia
 LEARNING_RATE = 0.0001
 
 # Directorio del dataset
@@ -128,14 +128,16 @@ def train_model():
     callbacks = [
         tf.keras.callbacks.EarlyStopping(
             monitor='val_accuracy',
-            patience=5,
-            restore_best_weights=True
+            patience=7,  # Aumentado para permitir más exploración
+            restore_best_weights=True,
+            min_delta=0.001  # Mejora mínima requerida
         ),
         tf.keras.callbacks.ReduceLROnPlateau(
             monitor='val_accuracy',
             factor=0.5,
-            patience=3,
-            min_lr=1e-7
+            patience=4,  # Reducir LR más rápido
+            min_lr=1e-7,
+            verbose=1
         ),
         tf.keras.callbacks.ModelCheckpoint(
             'best_garbage_model.h5',

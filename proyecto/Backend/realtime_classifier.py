@@ -38,18 +38,15 @@ class GarbageClassifierRealTime:
         self.img_size = 224
         self.confidence_threshold = 0.5
         
-        # Colores para cada clase
+        # Colores para cada clase (7 clases nuevas)
         self.colors = {
-            'battery': (0, 255, 255),     # Amarillo
             'biological': (0, 255, 0),    # Verde
             'cardboard': (139, 69, 19),   # Marrón
-            'clothes': (255, 0, 255),     # Magenta
             'glass': (0, 255, 255),       # Cyan
             'metal': (128, 128, 128),     # Gris
             'paper': (255, 255, 255),     # Blanco
             'plastic': (0, 0, 255),       # Azul
-            'shoes': (255, 165, 0),       # Naranja
-            'trash': (0, 0, 0)            # Negro
+            'trash': (255, 0, 0)          # Rojo
         }
         
         # Estadísticas
