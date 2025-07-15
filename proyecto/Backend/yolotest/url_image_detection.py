@@ -64,16 +64,37 @@ class URLGarbageDetector:
         
     def download_image_from_url(self, url, timeout=10):
         """
-        Descarga una imagen desde una URL
+        Descarga una imagen desde una URL o carga desde archivo local
         
         Args:
-            url: URL de la imagen
+            url: URL de la imagen o ruta local con prefijo file://
             timeout: Tiempo límite para la descarga
             
         Returns:
             image: Imagen en formato OpenCV (BGR) o None si falla
         """
         try:
+            # Verificar si es un archivo local
+            if url.startswith('file:///'):
+                local_path = url[8:]  # Remover 'file:///'
+                print(f"📂 Cargando imagen local: {local_path}")
+                
+                if not os.path.exists(local_path):
+                    print(f"❌ El archivo no existe: {local_path}")
+                    return None
+                
+                # Cargar imagen local
+                image = cv2.imread(local_path, cv2.IMREAD_COLOR)
+                
+                if image is None:
+                    print(f"❌ No se pudo cargar la imagen: {local_path}")
+                    print("💡 Formatos soportados: jpg, jpeg, png, bmp, tiff")
+                    return None
+                    
+                print(f"✅ Imagen local cargada correctamente: {image.shape}")
+                return image
+            
+            # Si no es archivo local, procesar como URL
             print(f"📥 Descargando imagen desde: {url}")
             
             # Configurar headers para simular un navegador
@@ -201,14 +222,14 @@ class URLGarbageDetector:
         
         return image, detections
     
-    def add_info_panel(self, image, detections, url):
+    def add_info_panel(self, image, detections, source):
         """
         Añade panel de información a la imagen
         
         Args:
             image: Imagen original
             detections: Lista de detecciones
-            url: URL de la imagen
+            source: URL o ruta de la imagen
             
         Returns:
             image: Imagen con panel de información
@@ -222,12 +243,20 @@ class URLGarbageDetector:
         image = cv2.addWeighted(image, 0.8, overlay, 0.2, 0)
         
         # Título
-        cv2.putText(image, "🗂️ DETECTOR DE BASURA - ANALISIS DE URL", (20, 30), 
+        cv2.putText(image, "🗂️ DETECTOR DE BASURA - ANALISIS DE IMAGEN", (20, 30), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         
-        # URL (truncada si es muy larga)
-        url_display = url if len(url) < 80 else url[:77] + "..."
-        cv2.putText(image, f"URL: {url_display}", (20, 55), 
+        # Fuente (URL o archivo local)
+        if source.startswith('file:///'):
+            source_display = f"Archivo: {source[8:]}"
+            if len(source_display) > 80:
+                source_display = source_display[:77] + "..."
+        else:
+            source_display = f"URL: {source}"
+            if len(source_display) > 80:
+                source_display = source_display[:77] + "..."
+                
+        cv2.putText(image, source_display, (20, 55), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
         
         # Estadísticas
@@ -271,14 +300,14 @@ class URLGarbageDetector:
         
         return image
     
-    def save_results(self, image, detections, url, filename_prefix="detected"):
+    def save_results(self, image, detections, source, filename_prefix="detected"):
         """
         Guarda la imagen procesada y los resultados en JSON
         
         Args:
             image: Imagen con detecciones dibujadas
             detections: Lista de detecciones
-            url: URL original de la imagen
+            source: URL o ruta original de la imagen
             filename_prefix: Prefijo para el nombre del archivo
             
         Returns:
@@ -286,9 +315,17 @@ class URLGarbageDetector:
         """
         # Generar nombre de archivo único
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        parsed_url = urlparse(url)
-        url_filename = os.path.basename(parsed_url.path) or "image"
-        name_base = f"{filename_prefix}_{timestamp}_{url_filename.split('.')[0]}"
+        
+        if source.startswith('file:///'):
+            # Para archivos locales, usar el nombre del archivo
+            local_path = source[8:]
+            filename = os.path.basename(local_path)
+            name_base = f"{filename_prefix}_{timestamp}_{os.path.splitext(filename)[0]}"
+        else:
+            # Para URLs, usar el nombre de la URL
+            parsed_url = urlparse(source)
+            url_filename = os.path.basename(parsed_url.path) or "image"
+            name_base = f"{filename_prefix}_{timestamp}_{url_filename.split('.')[0]}"
         
         # Guardar imagen
         image_path = os.path.join(self.output_dir, f"{name_base}.jpg")
@@ -297,7 +334,8 @@ class URLGarbageDetector:
         # Preparar datos JSON
         results_data = {
             "timestamp": datetime.now().isoformat(),
-            "source_url": url,
+            "source": source,
+            "source_type": "local_file" if source.startswith('file:///') else "url",
             "model_confidence_threshold": self.confidence_threshold,
             "device_used": self.device,
             "total_detections": len(detections),
@@ -317,25 +355,26 @@ class URLGarbageDetector:
         
         return image_path, json_path
     
-    def process_image_from_url(self, url, save_results=True, show_image=True):
+    def process_image_from_url(self, source, save_results=True, show_image=True):
         """
-        Procesa una imagen desde una URL
+        Procesa una imagen desde una URL o archivo local
         
         Args:
-            url: URL de la imagen
+            source: URL de la imagen o ruta local con prefijo file://
             save_results: Si guardar los resultados
             show_image: Si mostrar la imagen procesada
             
         Returns:
             dict: Resultados del procesamiento
         """
-        print(f"\n🔍 Procesando imagen desde URL...")
-        print(f"🔗 URL: {url}")
+        source_type = "archivo local" if source.startswith('file:///') else "URL"
+        print(f"\n🔍 Procesando imagen desde {source_type}...")
+        print(f"🔗 Fuente: {source}")
         
-        # Descargar imagen
-        image = self.download_image_from_url(url)
+        # Descargar/cargar imagen
+        image = self.download_image_from_url(source)
         if image is None:
-            return {"error": "No se pudo descargar la imagen"}
+            return {"error": f"No se pudo cargar la imagen desde {source_type}"}
         
         # Preprocesar imagen
         image = self.preprocess_image(image)
@@ -348,11 +387,12 @@ class URLGarbageDetector:
         image_with_detections, detections = self.draw_detections(image.copy(), results)
         
         # Añadir panel de información
-        final_image = self.add_info_panel(image_with_detections, detections, url)
+        final_image = self.add_info_panel(image_with_detections, detections, source)
         
         # Preparar resultados
         processing_results = {
-            "url": url,
+            "source": source,
+            "source_type": "local_file" if source.startswith('file:///') else "url",
             "total_detections": len(detections),
             "detections": detections,
             "success": True
@@ -360,7 +400,7 @@ class URLGarbageDetector:
         
         # Guardar resultados si se solicita
         if save_results:
-            image_path, json_path = self.save_results(final_image, detections, url)
+            image_path, json_path = self.save_results(final_image, detections, source)
             processing_results["image_saved"] = image_path
             processing_results["json_saved"] = json_path
             print(f"💾 Imagen guardada: {image_path}")
@@ -402,42 +442,101 @@ class URLGarbageDetector:
         
         return processing_results
     
-    def process_multiple_urls(self, urls, save_results=True, show_images=False):
+    def process_multiple_urls(self, sources, save_results=True, show_images=False):
         """
-        Procesa múltiples URLs
+        Procesa múltiples fuentes (URLs o archivos locales)
         
         Args:
-            urls: Lista de URLs
+            sources: Lista de URLs o rutas de archivos
             save_results: Si guardar los resultados
             show_images: Si mostrar las imágenes (puede ser lento con muchas imágenes)
             
         Returns:
-            list: Lista de resultados para cada URL
+            list: Lista de resultados para cada fuente
         """
-        print(f"🔄 Procesando {len(urls)} imágenes...")
+        print(f"🔄 Procesando {len(sources)} imágenes...")
         results = []
         
-        for i, url in enumerate(urls, 1):
+        for i, source in enumerate(sources, 1):
             print(f"\n{'='*50}")
-            print(f"📷 Imagen {i}/{len(urls)}")
+            print(f"📷 Imagen {i}/{len(sources)}")
             
             try:
-                result = self.process_image_from_url(url, save_results, show_images)
+                result = self.process_image_from_url(source, save_results, show_images)
                 results.append(result)
             except Exception as e:
-                error_result = {"url": url, "error": str(e), "success": False}
+                error_result = {"source": source, "error": str(e), "success": False}
                 results.append(error_result)
-                print(f"❌ Error procesando {url}: {e}")
+                print(f"❌ Error procesando {source}: {e}")
         
         # Resumen final
         successful = sum(1 for r in results if r.get("success", False))
         total_detections = sum(r.get("total_detections", 0) for r in results if r.get("success", False))
         
         print(f"\n🏁 PROCESAMIENTO COMPLETADO")
-        print(f"✅ Imágenes procesadas exitosamente: {successful}/{len(urls)}")
+        print(f"✅ Imágenes procesadas exitosamente: {successful}/{len(sources)}")
         print(f"📊 Total de detecciones: {total_detections}")
         
         return results
+
+def get_user_input():
+    """Solicita al usuario la fuente de la imagen"""
+    print("\n🔍 SELECCIONA LA FUENTE DE LA IMAGEN:")
+    print("1. 🌐 URL de internet")
+    print("2. 📁 Archivo local en el PC")
+    print("3. 📄 Archivo de texto con múltiples URLs")
+    
+    while True:
+        try:
+            opcion = input("\nElige una opción (1, 2 o 3): ").strip()
+            
+            if opcion == "1":
+                url = input("📝 Ingresa la URL de la imagen: ").strip()
+                if not url:
+                    print("❌ URL vacía. Intenta de nuevo.")
+                    continue
+                return "url", [url]
+                
+            elif opcion == "2":
+                ruta = input("📝 Ingresa la ruta completa del archivo: ").strip()
+                if not ruta:
+                    print("❌ Ruta vacía. Intenta de nuevo.")
+                    continue
+                if not os.path.exists(ruta):
+                    print(f"❌ El archivo no existe: {ruta}")
+                    continue
+                # Convertir ruta local a URL file://
+                file_url = f"file:///{ruta.replace(os.sep, '/')}"
+                return "local", [file_url]
+                
+            elif opcion == "3":
+                archivo_urls = input("📝 Ingresa la ruta del archivo de texto con URLs: ").strip()
+                if not archivo_urls:
+                    print("❌ Ruta vacía. Intenta de nuevo.")
+                    continue
+                if not os.path.exists(archivo_urls):
+                    print(f"❌ El archivo no existe: {archivo_urls}")
+                    continue
+                try:
+                    with open(archivo_urls, 'r', encoding='utf-8') as f:
+                        urls = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+                    if not urls:
+                        print("❌ El archivo no contiene URLs válidas.")
+                        continue
+                    return "file", urls
+                except Exception as e:
+                    print(f"❌ Error leyendo el archivo: {e}")
+                    continue
+            else:
+                print("❌ Opción inválida. Elige 1, 2 o 3.")
+                continue
+                
+        except KeyboardInterrupt:
+            print("\n👋 Operación cancelada por el usuario.")
+            return None, None
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            continue
 
 def main():
     """Función principal"""
@@ -468,7 +567,7 @@ def main():
     
     args = parser.parse_args()
     
-    print("🖼️ DETECTOR DE BASURA EN IMÁGENES DESDE URL")
+    print("🖼️ DETECTOR DE BASURA EN IMÁGENES")
     print("=" * 50)
     
     # Obtener lista de URLs
@@ -487,10 +586,19 @@ def main():
             print(f"❌ Archivo no encontrado: {args.url_file}")
             return
     
+    # Si no se proporcionaron URLs por argumentos, solicitar al usuario
     if not urls:
-        print("❌ No se proporcionaron URLs para procesar")
-        print("💡 Usa --urls o --url-file para especificar las imágenes")
-        return
+        tipo_fuente, urls_usuario = get_user_input()
+        if urls_usuario is None:
+            return
+        urls.extend(urls_usuario)
+        
+        if tipo_fuente == "url":
+            print(f"🌐 Procesando imagen desde URL...")
+        elif tipo_fuente == "local":
+            print(f"📁 Procesando archivo local...")
+        elif tipo_fuente == "file":
+            print(f"📄 Procesando {len(urls)} URLs desde archivo...")
     
     try:
         # Crear detector
@@ -500,7 +608,7 @@ def main():
             device=args.device
         )
         
-        # Procesar URLs
+        # Procesar URLs/archivos
         if len(urls) == 1:
             detector.process_image_from_url(
                 urls[0], 
