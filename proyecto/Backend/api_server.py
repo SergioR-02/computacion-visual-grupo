@@ -21,9 +21,8 @@ import uuid
 import torch
 from collections import defaultdict
 
-# Agregar el directorio actual al path para importar PhotoClassifier
+# Agregar el directorio actual al path para importar módulos
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from photo_classifier import PhotoClassifier
 from chatgpt_adviser import ChatGPTAdviser
 
 # Importaciones para YOLO
@@ -39,10 +38,8 @@ app = Flask(__name__)
 CORS(app, origins="*")  # Permitir requests desde el frontend
 socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=60, ping_interval=25)
 
-# Inicializar el clasificador globalmente con el modelo final entrenado
-print("🚀 Inicializando clasificador...")
-classifier = PhotoClassifier(model_path='garbage_classifier_final.h5')
-print("✅ Clasificador listo con modelo final entrenado!")
+# Solo usar YOLO para todas las detecciones
+print("🚀 Sistema configurado para usar únicamente YOLO...")
 
 # Inicializar YOLO Detector
 yolo_detector = None
@@ -114,6 +111,9 @@ if YOLO_AVAILABLE:
                     dict: Resultados de detección
                 """
                 try:
+                    # Obtener dimensiones de la imagen antes del loop
+                    img_height, img_width = image.shape[:2]
+                    
                     # Realizar detección
                     start_time = time.time()
                     results = self.model(image, conf=self.confidence_threshold, verbose=False)
@@ -127,7 +127,6 @@ if YOLO_AVAILABLE:
                             for box in boxes:
                                 # Obtener coordenadas (normalizar a 0-1)
                                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                                img_height, img_width = image.shape[:2]
                                 
                                 # Obtener clase y confianza
                                 class_id = int(box.cls[0])
@@ -267,66 +266,116 @@ def classify_image():
                 'message': 'Asegúrate de enviar la imagen como archivo o base64'
             }), 400
         
-        # Clasificar imagen
-        result = classifier.classify_image(image_array)
+        # Verificar que YOLO esté disponible
+        if not yolo_detector:
+            return jsonify({
+                'success': False,
+                'error': 'YOLO no está disponible',
+                'message': 'El sistema requiere YOLO para funcionar'
+            }), 503
+        
+        # Detectar objetos con YOLO
+        detection_result = yolo_detector.detect_objects(image_array)
+        
+        if not detection_result['success']:
+            return jsonify({
+                'success': False,
+                'error': 'Error en detección',
+                'message': 'No se pudo procesar la imagen con YOLO'
+            }), 500
         
         # Mapear nombres de categorías a español
         category_names = {
-            'battery': 'Batería',
             'biological': 'Orgánico',
             'cardboard': 'Cartón',
-            'clothes': 'Ropa',
             'glass': 'Vidrio',
             'metal': 'Metal',
             'paper': 'Papel',
-            'plastic': 'Plástico',
-            'shoes': 'Zapatos',
-            'trash': 'Basura General',
-            'unknown': 'Desconocido'
+            'plastic': 'Plástico'
         }
         
-        # Obtener consejos de ChatGPT
-        advice_data = None
-        if chatgpt_adviser and result['garbage_class'] != 'unknown':
-            try:
-                print(f"🤖 Consultando ChatGPT para: {result['garbage_class']}")
-                advice_response = chatgpt_adviser.get_product_advice(
-                    result['garbage_class'], 
-                    result['original_class'], 
-                    result['confidence']
-                )
-                if advice_response['success']:
-                    advice_data = advice_response['advice']
-                    print("✅ Consejos obtenidos de ChatGPT")
-                else:
-                    print(f"⚠️ Error en ChatGPT: {advice_response.get('error', 'Error desconocido')}")
-                    advice_data = advice_response.get('advice')
-            except Exception as e:
-                print(f"❌ Error consultando ChatGPT: {e}")
-                # Usar consejos de respaldo
-                if chatgpt_adviser:
-                    advice_data = chatgpt_adviser._get_fallback_advice(result['garbage_class'])
+        # Procesar detecciones
+        detections = detection_result['detections']
         
-        # Formatear respuesta
+        # Si hay detecciones, usar la de mayor confianza para ChatGPT
+        main_detection = None
+        advice_data = None
+        
+        if detections:
+            # Ordenar por confianza y tomar la mejor
+            main_detection = max(detections, key=lambda x: x['confidence'])
+            main_category = main_detection['category']
+            
+            # Obtener consejos de ChatGPT para la detección principal
+            if chatgpt_adviser:
+                try:
+                    print(f"🤖 Consultando ChatGPT para: {main_category}")
+                    advice_response = chatgpt_adviser.get_product_advice(
+                        main_category, 
+                        main_detection['class'], 
+                        main_detection['confidence']
+                    )
+                    if advice_response['success']:
+                        advice_data = advice_response['advice']
+                        print("✅ Consejos obtenidos de ChatGPT")
+                    else:
+                        print(f"⚠️ Error en ChatGPT: {advice_response.get('error', 'Error desconocido')}")
+                        advice_data = advice_response.get('advice')
+                except Exception as e:
+                    print(f"❌ Error consultando ChatGPT: {e}")
+                    # Usar consejos de respaldo
+                    if chatgpt_adviser:
+                        advice_data = chatgpt_adviser._get_fallback_advice(main_category)
+        
+        # Enriquecer detecciones con nombres en español
+        enriched_detections = []
+        for detection in detections:
+            # Procesar bbox (YOLO retorna dict, convertir a formato web-friendly)
+            bbox_processed = [0.0, 0.0, 0.0, 0.0]  # [x1, y1, x2, y2] por defecto
+            try:
+                if 'bbox' in detection and detection['bbox']:
+                    bbox_dict = detection['bbox']
+                    bbox_processed = [
+                        float(bbox_dict.get('x1', 0.0)),
+                        float(bbox_dict.get('y1', 0.0)),
+                        float(bbox_dict.get('x2', 0.0)),
+                        float(bbox_dict.get('y2', 0.0))
+                    ]
+            except (ValueError, TypeError) as e:
+                print(f"⚠️ Error procesando bbox {detection.get('bbox', 'None')}: {e}")
+            
+            enriched_detection = {
+                'category': str(detection['category']),
+                'class': str(detection['class']),
+                'confidence': float(detection['confidence']) if detection.get('confidence') is not None else 0.0,
+                'confidence_percentage': round(float(detection['confidence']) * 100, 2) if detection.get('confidence') is not None else 0.0,
+                'bbox': bbox_processed,
+                'bbox_normalized': detection.get('bbox', {}),  # Mantener formato original para frontend
+                'category_name': category_names.get(detection['category'], detection['class'])
+            }
+            enriched_detections.append(enriched_detection)
+        
+        # Formatear respuesta manteniendo estructura similar
         response = {
             'success': True,
             'result': {
-                'category': result['garbage_class'],
-                'category_name': category_names.get(result['garbage_class'], result['garbage_class']),
-                'confidence': float(result['confidence']),
-                'confidence_percentage': round(float(result['confidence']) * 100, 2),
-                'original_class': result['original_class'],
-                'inference_time_ms': round(result['inference_time'], 1),
-                'top_predictions': [
-                    {
-                        'class': classifier.class_labels[str(idx)],
-                        'confidence': float(result['all_predictions'][idx]),
-                        'confidence_percentage': round(float(result['all_predictions'][idx]) * 100, 2)
-                    }
-                    for idx in np.argsort(result['all_predictions'])[-3:][::-1]
-                ],
+                'type': 'detection',
+                'detections': enriched_detections,
+                'detection_count': int(detection_result['detection_count']),
+                'inference_time_ms': float(detection_result['inference_time_ms']),
+                'image_size': {
+                    'width': int(detection_result['image_size'].get('width', 0)),
+                    'height': int(detection_result['image_size'].get('height', 0))
+                },
+                'model_type': 'YOLO',
+                'model_used': 'best.pt',
                 'advice': advice_data,
-                'has_chatgpt_advice': chatgpt_adviser is not None
+                'has_chatgpt_advice': chatgpt_adviser is not None,
+                # Compatibilidad: si hay detección principal, incluir como campos legacy
+                'category': main_detection['category'] if main_detection else 'unknown',
+                'category_name': category_names.get(main_detection['category'], 'Desconocido') if main_detection else 'Desconocido',
+                'confidence': float(main_detection['confidence']) if main_detection else 0.0,
+                'confidence_percentage': round(float(main_detection['confidence']) * 100, 2) if main_detection else 0.0
             }
         }
         
@@ -342,23 +391,22 @@ def classify_image():
 
 @app.route('/categories', methods=['GET'])
 def get_categories():
-    """Obtener lista de categorías disponibles"""
+    """Obtener lista de categorías disponibles (solo YOLO)"""
+    # Solo categorías disponibles en el modelo YOLO
     categories = {
-        'battery': 'Batería',
         'biological': 'Orgánico',
         'cardboard': 'Cartón',
-        'clothes': 'Ropa',
         'glass': 'Vidrio',
         'metal': 'Metal',
         'paper': 'Papel',
-        'plastic': 'Plástico',
-        'shoes': 'Zapatos',
-        'trash': 'Basura General'
+        'plastic': 'Plástico'
     }
     
     return jsonify({
         'success': True,
-        'categories': categories
+        'categories': categories,
+        'model_type': 'YOLO',
+        'total_categories': len(categories)
     })
 
 @app.route('/detect', methods=['POST'])
@@ -457,7 +505,7 @@ def detect_objects():
 
 @app.route('/detect/status', methods=['GET'])
 def detection_status():
-    """Verificar estado del sistema de detección YOLO"""
+    """Verificar estado del sistema principal (YOLO únicamente)"""
     if yolo_detector:
         return jsonify({
             'success': True,
@@ -465,13 +513,13 @@ def detection_status():
             'device': yolo_detector.device,
             'classes': yolo_detector.classes,
             'confidence_threshold': yolo_detector.confidence_threshold,
-            'message': 'Sistema de detección YOLO operativo'
+            'message': 'Sistema principal YOLO operativo - Único modelo activo'
         })
     else:
         return jsonify({
             'success': False,
             'yolo_available': False,
-            'message': 'Sistema de detección YOLO no disponible'
+            'message': 'Sistema principal YOLO no disponible'
         })
 
 # ===== WEBSOCKET EVENTS =====
@@ -501,32 +549,30 @@ def handle_disconnect():
 
 @socketio.on('start_detection')
 def handle_start_detection(data=None):
-    """Iniciar detección en tiempo real"""
+    """Iniciar detección YOLO en tiempo real"""
     global current_session_id
     if not current_session_id:
         current_session_id = str(uuid.uuid4())
     
-    # Obtener configuración del cliente
-    use_detection = False
-    if data and isinstance(data, dict):
-        use_detection = data.get('use_detection', False)
+    # Verificar que YOLO esté disponible
+    if not yolo_detector:
+        emit('error', {'message': 'YOLO no está disponible'})
+        return
     
-    detection_type = "YOLO" if use_detection and yolo_detector else "Clasificación"
-    print(f"🎥 Iniciando {detection_type} para cliente: {current_session_id}")
+    print(f"🎥 Iniciando YOLO para cliente: {current_session_id}")
     
     # Marcar sesión como activa
     active_streams[current_session_id] = {
         'active': True,
         'last_detection': time.time(),
         'fps_limit': 2,  # Máximo 2 FPS para no sobrecargar
-        'use_detection': use_detection and yolo_detector is not None
     }
     
     emit('detection_started', {
         'status': 'active',
-        'message': f'{detection_type} en tiempo real iniciada',
-        'detection_type': detection_type.lower(),
-        'yolo_available': yolo_detector is not None
+        'message': 'Detección YOLO en tiempo real iniciada',
+        'detection_type': 'yolo',
+        'yolo_available': True
     })
 
 @socketio.on('stop_detection')
@@ -578,178 +624,104 @@ def handle_frame_data(data):
             emit('error', {'message': 'Error procesando frame'})
             return
         
-        # Determinar qué modelo usar basado en la configuración de la sesión
-        use_detection = session_data.get('use_detection', False)
+        # Verificar que YOLO esté disponible
+        if not yolo_detector:
+            emit('error', {'message': 'YOLO no está disponible'})
+            return
         
-        if use_detection and yolo_detector:
-            # Usar YOLO para detección de objetos
-            detection_result = yolo_detector.detect_objects(image_array)
+        # Usar YOLO para detección de objetos
+        detection_result = yolo_detector.detect_objects(image_array)
+        
+        if detection_result['success']:
+            # Mapear nombres de categorías a español
+            category_names = {
+                'biological': 'Orgánico',
+                'cardboard': 'Cartón',
+                'glass': 'Vidrio',
+                'metal': 'Metal',
+                'paper': 'Papel',
+                'plastic': 'Plástico'
+            }
             
-            if detection_result['success']:
-                # Mapear nombres de categorías a español
-                category_names = {
-                    'biological': 'Orgánico',
-                    'cardboard': 'Cartón',
-                    'glass': 'Vidrio',
-                    'metal': 'Metal',
-                    'paper': 'Papel',
-                    'plastic': 'Plástico'
+            # Enriquecer detecciones
+            enriched_detections = []
+            for detection in detection_result['detections']:
+                # Procesar bbox (YOLO retorna dict, convertir a formato web-friendly)
+                bbox_processed = [0.0, 0.0, 0.0, 0.0]  # [x1, y1, x2, y2] por defecto
+                try:
+                    if 'bbox' in detection and detection['bbox']:
+                        bbox_dict = detection['bbox']
+                        bbox_processed = [
+                            float(bbox_dict.get('x1', 0.0)),
+                            float(bbox_dict.get('y1', 0.0)),
+                            float(bbox_dict.get('x2', 0.0)),
+                            float(bbox_dict.get('y2', 0.0))
+                        ]
+                except (ValueError, TypeError) as e:
+                    print(f"⚠️ Error procesando bbox en WebSocket {detection.get('bbox', 'None')}: {e}")
+                
+                enriched_detection = {
+                    'category': str(detection['category']),
+                    'class': str(detection['class']),
+                    'confidence': float(detection['confidence']) if detection.get('confidence') is not None else 0.0,
+                    'bbox': bbox_processed,
+                    'bbox_normalized': detection.get('bbox', {}),  # Mantener formato original para frontend
+                    'category_name': category_names.get(
+                        detection['category'], detection['class']
+                    )
                 }
-                
-                # Enriquecer detecciones
-                enriched_detections = []
-                for detection in detection_result['detections']:
-                    enriched_detection = {
-                        'category': str(detection['category']),
-                        'class': str(detection['class']),
-                        'confidence': float(detection['confidence']),
-                        'bbox': [float(x) for x in detection['bbox']],
-                        'category_name': category_names.get(
-                            detection['category'], detection['class']
-                        )
-                    }
-                    enriched_detections.append(enriched_detection)
-                
-                # Preparar respuesta de detección en tiempo real
-                realtime_result = {
-                    'success': True,
-                    'timestamp': float(current_time),
-                    'result': {
-                        'type': 'detection',
+                enriched_detections.append(enriched_detection)
+            
+            # Preparar respuesta de detección en tiempo real
+            realtime_result = {
+                'success': True,
+                'timestamp': float(current_time),
+                'result': {
+                                            'type': 'detection',
                         'detections': enriched_detections,
                         'detection_count': int(detection_result['detection_count']),
                         'inference_time_ms': float(detection_result['inference_time_ms']),
-                        'image_size': [int(x) for x in detection_result['image_size']],
+                        'image_size': {
+                            'width': int(detection_result['image_size'].get('width', 0)),
+                            'height': int(detection_result['image_size'].get('height', 0))
+                        },
                         'model_type': 'YOLO',
-                        'model_used': 'best.pt',
-                        'realtime': True
-                    }
+                    'model_used': 'best.pt',
+                    'realtime': True
                 }
-                
-                # Enviar resultado de detección
-                emit('detection_result', realtime_result)
-            else:
-                emit('error', {'message': 'Error en detección YOLO de frame'})
-        else:
-            # Usar clasificador tradicional
-            result = classifier.classify_image_realtime(image_array)
+            }
             
-            if result:
-                # Obtener consejos (usar consejos básicos para tiempo real para mayor velocidad)
-                advice_data = get_recycling_advice(result['category'], result['original_class'])
-                
-                # Mapear nombres de categorías a español
-                category_names = {
-                    'battery': 'Batería',
-                    'biological': 'Orgánico', 
-                    'cardboard': 'Cartón',
-                    'clothes': 'Ropa',
-                    'glass': 'Vidrio',
-                    'metal': 'Metal',
-                    'paper': 'Papel',
-                    'plastic': 'Plástico',
-                    'shoes': 'Zapatos',
-                    'trash': 'Basura General'
-                }
-                
-                # Preparar respuesta en tiempo real
-                realtime_result = {
-                    'success': True,
-                    'timestamp': float(current_time),
-                    'result': {
-                        'type': 'classification',
-                        'category': str(result['category']),
-                        'category_name': category_names.get(result['category'], result['category']),
-                        'confidence': float(result['confidence']),
-                        'confidence_percentage': float(result['confidence_percentage']),
-                        'original_class': str(result['original_class']),
-                        'inference_time_ms': float(result['inference_time_ms']),
-                        'advice': advice_data,
-                        'has_chatgpt_advice': False,  # Deshabilitado en tiempo real para velocidad
-                        'realtime': True,
-                        'model_used': 'garbage_classifier_final.h5'  # Modelo actualizado
-                    }
-                }
-                
-                # Enviar resultado en tiempo real
-                emit('detection_result', realtime_result)
-                
-            else:
-                emit('error', {'message': 'Error en clasificación de frame'})
+            # Enviar resultado de detección
+            emit('detection_result', realtime_result)
+        else:
+            emit('error', {'message': 'Error en detección YOLO de frame'})
             
     except Exception as e:
         print(f"❌ Error procesando frame: {e}")
         emit('error', {'message': f'Error interno: {str(e)}'})
 
-def get_recycling_advice(category, original_class):
-    """Obtener consejos básicos de reciclaje (versión simplificada para tiempo real)"""
-    
-    basic_advice = {
-        'biological': {
-            'consejos': 'Separa los residuos orgánicos sin bolsas plásticas. Evita carnes y productos lácteos.',
-            'impacto': 'El compostaje reduce emisiones de metano y genera fertilizante natural.',
-            'datos': 'Los orgánicos representan 40% de la basura doméstica.',
-            'alternativas': 'Haz compost casero o usa biodigestor.'
-        },
-        'plastic': {
-            'consejos': 'Limpia el plástico antes de reciclar. Retira etiquetas y tapas si es necesario.',
-            'impacto': 'Reciclar plástico ahorra 70% de energía vs producción nueva.',
-            'datos': 'Solo 9% del plástico mundial se recicla efectivamente.',
-            'alternativas': 'Usa botellas reutilizables y reduce plásticos de un solo uso.'
-        },
-        'paper': {
-            'consejos': 'Papel limpio y seco al contenedor azul. No mezcles con papel sucio.',
-            'impacto': 'Reciclar papel salva 17 árboles por tonelada.',
-            'datos': 'El papel puede reciclarse hasta 7 veces antes de degradarse.',
-            'alternativas': 'Digitaliza documentos y usa papel reciclado.'
-        },
-        'glass': {
-            'consejos': 'Separa por colores si es posible. Retira tapas y corchos.',
-            'impacto': 'El vidrio es 100% reciclable sin pérdida de calidad.',
-            'datos': 'Reciclar vidrio ahorra 30% de energía vs fabricación nueva.',
-            'alternativas': 'Reutiliza frascos para almacenamiento.'
-        },
-        'metal': {
-            'consejos': 'Limpia latas y separa diferentes tipos de metal.',
-            'impacto': 'Reciclar aluminio ahorra 95% de energía vs producción nueva.',
-            'datos': 'Una lata de aluminio se recicla en 60 días.',
-            'alternativas': 'Compra productos con menos embalaje metálico.'
-        },
-        'cardboard': {
-            'consejos': 'Aplana cajas y retira cintas adhesivas. Mantén seco.',
-            'impacto': 'Reciclar cartón reduce tala de árboles en 24%.',
-            'datos': 'El cartón puede reciclarse hasta 25 veces.',
-            'alternativas': 'Reutiliza cajas para almacenamiento o mudanzas.'
-        }
-    }
-    
-    return basic_advice.get(category, {
-        'consejos': 'Consulta las normas locales de reciclaje.',
-        'impacto': 'Separar correctamente mejora las tasas de reciclaje.',
-        'datos': 'La separación adecuada es clave para el reciclaje efectivo.',
-        'alternativas': 'Reduce, reutiliza y recicla en ese orden de prioridad.'
-    })
+# Función eliminada: get_recycling_advice
+# ChatGPT Adviser ahora proporciona consejos más avanzados
 
 if __name__ == '__main__':
     print("🌐 Iniciando servidor API...")
     print("📡 Disponible en: http://localhost:5000")
     print("🔗 Endpoints HTTP:")
     print("   GET  /health - Verificar estado")
-    print("   POST /classify - Clasificar imagen")
+    print("   POST /classify - Detectar objetos (YOLO)")
     print("   POST /detect - Detectar objetos con YOLO")
-    print("   GET  /detect/status - Estado del detector YOLO")
+    print("   GET  /detect/status - Estado del sistema principal")
     print("   GET  /categories - Obtener categorías")
     print("🔗 WebSocket Events:")
     print("   connect - Conectar cliente")
-    print("   start_detection - Iniciar detección tiempo real")
+    print("   start_detection - Iniciar detección tiempo real YOLO")
     print("   frame_data - Enviar frame para análisis")
     print("   stop_detection - Detener detección")
-    print("🎯 Modelos disponibles:")
-    print("   📊 Clasificación: garbage_classifier_final.h5")
+    print("🎯 Modelo principal:")
     if yolo_detector:
-        print("   🎯 Detección YOLO: best.pt ✅")
+        print("   🎯 YOLO best.pt ✅ (Único modelo activo)")
     else:
-        print("   🎯 Detección YOLO: No disponible ❌")
+        print("   ❌ YOLO no disponible - Sistema no funcional")
     print("=" * 50)
     
     socketio.run(app, debug=True, host='0.0.0.0', port=5000) 
