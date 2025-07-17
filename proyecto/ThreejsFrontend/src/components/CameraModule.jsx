@@ -14,10 +14,16 @@ const CameraModule = ({ onDetection }) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [detectionMode, setDetectionMode] = useState('classification'); // 'classification' o 'detection'
   const [yoloAvailable, setYoloAvailable] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [connectionQuality, setConnectionQuality] = useState('good'); // 'good', 'fair', 'poor'
+  const [framesProcessed, setFramesProcessed] = useState(0);
   
   const webcamRef = useRef(null);
   const socketRef = useRef(null);
   const streamIntervalRef = useRef(null);
+  const frameBufferRef = useRef([]);
+  const lastFrameTimeRef = useRef(0);
+  const reconnectTimeoutRef = useRef(null);
 
   // Verificar disponibilidad de YOLO al montar componente
   useEffect(() => {
@@ -61,14 +67,14 @@ const CameraModule = ({ onDetection }) => {
         setError(null);
       });
 
-      socketRef.current.on('disconnect', () => {
-        console.log('🔌 Desconectado del servidor WebSocket');
-        setSocketConnected(false);
-        setIsStreaming(false);
-      });
+
 
       socketRef.current.on('connection_response', (data) => {
         console.log('✅ Respuesta de conexión:', data.message);
+        if (data.session_id) {
+          setCurrentSessionId(data.session_id);
+          console.log('🆔 Session ID recibido:', data.session_id);
+        }
       });
 
       socketRef.current.on('detection_started', (data) => {
@@ -87,9 +93,23 @@ const CameraModule = ({ onDetection }) => {
         if (result.success) {
           const resultData = result.result;
           
+          // Actualizar métricas de rendimiento
+          setFramesProcessed(prev => prev + 1);
+          
+          // Evaluar calidad de conexión basada en tiempo de inferencia
+          if (resultData.inference_time_ms) {
+            if (resultData.inference_time_ms < 200) {
+              setConnectionQuality('good');
+            } else if (resultData.inference_time_ms < 500) {
+              setConnectionQuality('fair');
+            } else {
+              setConnectionQuality('poor');
+            }
+          }
+          
           // Manejar resultado según el tipo (clasificación o detección)
           if (resultData.type === 'detection') {
-            // Resultado de YOLO con múltiples objetos
+            // Resultado de YOLO con múltiples objetos (tiempo real - sin ChatGPT)
             const formattedResults = resultData.detections.map(detection => ({
               object: detection.category_name,
               category: detection.category,
@@ -99,7 +119,8 @@ const CameraModule = ({ onDetection }) => {
               bbox: detection.bbox,
               color: detection.color,
               detection_type: 'yolo',
-              realtime: true,
+              realtime: detection.realtime || resultData.realtime || true,
+              chatgpt_skipped: resultData.chatgpt_skipped || false,
               timestamp: result.timestamp
             }));
             
@@ -147,6 +168,22 @@ const CameraModule = ({ onDetection }) => {
         console.error('❌ Error de conexión WebSocket:', error);
         setError('No se pudo conectar al servidor. ¿Está el backend funcionando?');
         setSocketConnected(false);
+        
+        // Intentar reconectar automáticamente después de 3 segundos
+        if (realtimeMode) {
+          reconnectTimeoutRef.current = setTimeout(attemptReconnection, 3000);
+        }
+      });
+
+      socketRef.current.on('disconnect', (reason) => {
+        console.log('🔌 Desconectado del servidor WebSocket. Razón:', reason);
+        setSocketConnected(false);
+        setIsStreaming(false);
+        
+        // Solo intentar reconectar si no fue una desconexión intencional
+        if (reason !== 'io client disconnect' && realtimeMode) {
+          attemptReconnection();
+        }
       });
 
     } catch (error) {
@@ -158,7 +195,12 @@ const CameraModule = ({ onDetection }) => {
 
   const cleanupWebSocket = () => {
     if (streamIntervalRef.current) {
-      clearInterval(streamIntervalRef.current);
+      clearTimeout(streamIntervalRef.current);
+      streamIntervalRef.current = null;
+    }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
     if (socketRef.current) {
       socketRef.current.disconnect();
@@ -166,24 +208,93 @@ const CameraModule = ({ onDetection }) => {
     }
     setSocketConnected(false);
     setIsStreaming(false);
+    setCurrentSessionId(null);
+    setFramesProcessed(0);
+    frameBufferRef.current = [];
   };
+
+  // Función de reconexión automática
+  const attemptReconnection = useCallback(() => {
+    if (realtimeMode && !socketConnected) {
+      console.log('🔄 Intentando reconectar WebSocket...');
+      initWebSocket();
+      
+      // Si falla, intentar de nuevo después de 5 segundos
+      reconnectTimeoutRef.current = setTimeout(() => {
+        if (!socketConnected && realtimeMode) {
+          attemptReconnection();
+        }
+      }, 5000);
+    }
+  }, [realtimeMode, socketConnected]);
 
   const startFrameStreaming = () => {
     if (streamIntervalRef.current) return;
 
-    streamIntervalRef.current = setInterval(() => {
+    // Función para capturar y enviar frame optimizada
+    const captureAndSendFrame = () => {
       if (webcamRef.current && socketRef.current?.connected) {
-        const imageSrc = webcamRef.current.getScreenshot();
+        const currentTime = Date.now();
+        
+        // Control de FPS adaptativo basado en calidad de conexión
+        let fpsInterval;
+        switch (connectionQuality) {
+          case 'good':
+            fpsInterval = 400; // 2.5 FPS
+            break;
+          case 'fair':
+            fpsInterval = 600; // 1.67 FPS
+            break;
+          case 'poor':
+            fpsInterval = 1000; // 1 FPS
+            break;
+          default:
+            fpsInterval = 500; // 2 FPS
+        }
+        
+        // Control de tiempo entre frames
+        if (currentTime - lastFrameTimeRef.current < fpsInterval) {
+          return;
+        }
+        
+        // Capturar frame con compresión optimizada
+        const imageSrc = webcamRef.current.getScreenshot({
+          width: 640,
+          height: 480,
+          quality: connectionQuality === 'good' ? 0.8 : connectionQuality === 'fair' ? 0.6 : 0.4
+        });
+        
         if (imageSrc) {
-          socketRef.current.emit('frame_data', { frame: imageSrc });
+          // Enviar con datos de sesión
+          const frameData = {
+            frame: imageSrc,
+            session_id: currentSessionId,
+            timestamp: currentTime,
+            quality: connectionQuality
+          };
+          
+          socketRef.current.emit('frame_data', frameData);
+          lastFrameTimeRef.current = currentTime;
         }
       }
-    }, 500); // 2 FPS
+    };
+
+    // Usar requestAnimationFrame para mejor rendimiento
+    const streamLoop = () => {
+      captureAndSendFrame();
+      if (streamIntervalRef.current) {
+        streamIntervalRef.current = setTimeout(() => {
+          requestAnimationFrame(streamLoop);
+        }, 100); // Verificar cada 100ms pero enviar según calidad
+      }
+    };
+
+    requestAnimationFrame(streamLoop);
   };
 
   const stopFrameStreaming = () => {
     if (streamIntervalRef.current) {
-      clearInterval(streamIntervalRef.current);
+      clearTimeout(streamIntervalRef.current);
       streamIntervalRef.current = null;
     }
   };
@@ -192,7 +303,8 @@ const CameraModule = ({ onDetection }) => {
     if (socketRef.current) {
       setIsDetecting(true);
       socketRef.current.emit('start_detection', { 
-        use_detection: detectionMode === 'detection' 
+        use_detection: detectionMode === 'detection',
+        session_id: currentSessionId
       });
     }
   };
@@ -200,7 +312,9 @@ const CameraModule = ({ onDetection }) => {
   const stopRealtimeDetection = () => {
     if (socketRef.current) {
       setIsDetecting(false);
-      socketRef.current.emit('stop_detection');
+      socketRef.current.emit('stop_detection', {
+        session_id: currentSessionId
+      });
     }
   };
 
@@ -432,6 +546,25 @@ const CameraModule = ({ onDetection }) => {
             <div className="absolute top-2 lg:top-4 right-2 lg:right-4 flex items-center space-x-1 lg:space-x-2 text-blue-400">
               <Activity className="h-3 lg:h-4 w-3 lg:w-4 animate-pulse" />
               <span className="text-xs lg:text-sm font-medium">Detectando...</span>
+              
+              {/* Indicador de calidad de conexión en tiempo real */}
+              {realtimeMode && (
+                <div className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
+                  connectionQuality === 'good' ? 'bg-green-500/90 text-white' :
+                  connectionQuality === 'fair' ? 'bg-yellow-500/90 text-white' :
+                  'bg-red-500/90 text-white'
+                }`}>
+                  {connectionQuality === 'good' ? '🟢' : connectionQuality === 'fair' ? '🟡' : '🔴'}
+                  {connectionQuality === 'good' ? 'Buena' : connectionQuality === 'fair' ? 'Regular' : 'Lenta'}
+                </div>
+              )}
+              
+              {/* Contador de frames */}
+              {realtimeMode && framesProcessed > 0 && (
+                <div className="bg-black/50 text-white px-2 py-1 rounded text-xs ml-1">
+                  {framesProcessed}f
+                </div>
+              )}
             </div>
           </>
         )}
@@ -443,7 +576,10 @@ const CameraModule = ({ onDetection }) => {
               <>
                 {/* Header para YOLO con múltiples objetos */}
                 <div className="absolute top-2 lg:top-4 left-2 lg:left-4 bg-emerald-500/90 text-white px-2 lg:px-3 py-1 rounded-lg text-xs lg:text-sm font-medium">
-                  🎯 {detectionResult.detection_count} objetos detectados
+                  {realtimeMode ? '⚡' : '🎯'} {detectionResult.detection_count} objetos detectados
+                  {realtimeMode && (
+                    <span className="text-emerald-200 text-xs ml-1">(Modo Rápido)</span>
+                  )}
                 </div>
                 
                 {/* Tiempo de inferencia */}
@@ -618,7 +754,17 @@ const CameraModule = ({ onDetection }) => {
         <div className="text-center mb-3">
           <div className="inline-flex items-center space-x-2 bg-purple-500/20 text-purple-300 px-3 py-1.5 rounded-lg text-xs">
             <Activity className="h-3 w-3 animate-pulse" />
-            <span>Analizando en tiempo real - 2 FPS</span>
+            <span>⚡ Detección rápida - Sin consultas IA</span>
+          </div>
+        </div>
+      )}
+
+      {/* Información del modo tiempo real */}
+      {realtimeMode && !isStreaming && (
+        <div className="text-center mb-3">
+          <div className="inline-flex items-center space-x-2 bg-blue-500/20 text-blue-300 px-3 py-1.5 rounded-lg text-xs">
+            <Zap className="h-3 w-3" />
+            <span>Modo rápido: Solo detección YOLO (sin ChatGPT)</span>
           </div>
         </div>
       )}
