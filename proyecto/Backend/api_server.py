@@ -188,7 +188,6 @@ except Exception as e:
 
 # Variables globales para control de streaming
 active_streams = {}  # Dict para manejar múltiples sesiones de streaming
-current_session_id = None  # Sesión actual simplificada
 
 def process_image_data(image_data):
     """
@@ -527,64 +526,92 @@ def detection_status():
 @socketio.on('connect')
 def handle_connect():
     """Manejar nueva conexión WebSocket"""
-    global current_session_id
-    current_session_id = str(uuid.uuid4())
-    print(f"🔌 Cliente conectado: {current_session_id}")
+    session_id = str(uuid.uuid4())
+    print(f"🔌 Cliente conectado: {session_id}")
+    
+    # Inicializar sesión
+    active_streams[session_id] = {
+        'active': False,
+        'last_detection': time.time(),
+        'fps_limit': 2,
+        'frames_processed': 0,
+        'connected': True
+    }
+    
     emit('connection_response', {
         'status': 'connected',
+        'session_id': session_id,
         'message': 'Conectado al servidor de clasificación en tiempo real'
     })
 
 @socketio.on('disconnect')
 def handle_disconnect():
     """Manejar desconexión WebSocket"""
-    global current_session_id
-    print(f"🔌 Cliente desconectado: {current_session_id}")
+    print(f"🔌 Cliente desconectado")
     
-    # Limpiar sesión activa si existe
-    if current_session_id and current_session_id in active_streams:
-        active_streams[current_session_id]['active'] = False
-        del active_streams[current_session_id]
-    current_session_id = None
+    # Limpiar todas las sesiones inactivas
+    sessions_to_remove = []
+    for session_id, session_data in active_streams.items():
+        if not session_data.get('connected', True):
+            sessions_to_remove.append(session_id)
+    
+    for session_id in sessions_to_remove:
+        if session_id in active_streams:
+            del active_streams[session_id]
 
 @socketio.on('start_detection')
 def handle_start_detection(data=None):
     """Iniciar detección YOLO en tiempo real"""
-    global current_session_id
-    if not current_session_id:
-        current_session_id = str(uuid.uuid4())
+    # Buscar sesión activa del cliente
+    session_id = data.get('session_id') if data else None
+    if not session_id:
+        # Buscar primera sesión disponible
+        for sid, session_data in active_streams.items():
+            if session_data.get('connected', True):
+                session_id = sid
+                break
+    
+    if not session_id or session_id not in active_streams:
+        emit('error', {'message': 'Sesión no válida'})
+        return
     
     # Verificar que YOLO esté disponible
     if not yolo_detector:
         emit('error', {'message': 'YOLO no está disponible'})
         return
     
-    print(f"🎥 Iniciando YOLO para cliente: {current_session_id}")
+    print(f"🎥 Iniciando YOLO para cliente: {session_id}")
     
     # Marcar sesión como activa
-    active_streams[current_session_id] = {
+    active_streams[session_id].update({
         'active': True,
         'last_detection': time.time(),
-        'fps_limit': 2,  # Máximo 2 FPS para no sobrecargar
-    }
+        'frames_processed': 0
+    })
     
     emit('detection_started', {
         'status': 'active',
+        'session_id': session_id,
         'message': 'Detección YOLO en tiempo real iniciada',
         'detection_type': 'yolo',
         'yolo_available': True
     })
 
 @socketio.on('stop_detection')
-def handle_stop_detection():
+def handle_stop_detection(data=None):
     """Detener detección en tiempo real"""
-    global current_session_id
-    print(f"🛑 Deteniendo detección para cliente: {current_session_id}")
-    
-    # Marcar sesión como inactiva
-    if current_session_id and current_session_id in active_streams:
-        active_streams[current_session_id]['active'] = False
-        del active_streams[current_session_id]
+    # Buscar sesión activa del cliente
+    session_id = data.get('session_id') if data else None
+    if not session_id:
+        # Detener todas las sesiones activas
+        for sid, session_data in active_streams.items():
+            if session_data.get('active', False):
+                session_data['active'] = False
+                print(f"🛑 Deteniendo detección para cliente: {sid}")
+    else:
+        print(f"🛑 Deteniendo detección para cliente: {session_id}")
+        if session_id in active_streams:
+            active_streams[session_id]['active'] = False
     
     emit('detection_stopped', {
         'status': 'inactive',
@@ -595,22 +622,38 @@ def handle_stop_detection():
 def handle_frame_data(data):
     """Procesar frame de video en tiempo real"""
     try:
-        global current_session_id
+        # Buscar sesión activa del cliente
+        session_id = data.get('session_id') if data else None
+        if not session_id:
+            # Buscar primera sesión activa
+            for sid, session_data in active_streams.items():
+                if session_data.get('active', False) and session_data.get('connected', True):
+                    session_id = sid
+                    break
         
         # Verificar si la sesión está activa
-        if not current_session_id or current_session_id not in active_streams or not active_streams[current_session_id]['active']:
+        if not session_id or session_id not in active_streams or not active_streams[session_id]['active']:
             return
         
-        # Control de FPS - evitar procesar frames muy rápido
+        # Control de FPS mejorado - evitar procesar frames muy rápido
         current_time = time.time()
-        session_data = active_streams[current_session_id]
+        session_data = active_streams[session_id]
         time_since_last = current_time - session_data['last_detection']
         min_interval = 1.0 / session_data['fps_limit']  # Intervalo mínimo entre frames
         
-        if time_since_last < min_interval:
+                # Adaptative FPS - reducir si hay congestión
+        if session_data['frames_processed'] > 10:
+            if time_since_last < min_interval * 1.5:  # Más conservador si hay mucha actividad
+                return
+        elif time_since_last < min_interval:
             return  # Saltar este frame para controlar FPS
         
+        # Implementar buffer simple - evitar procesar si hay demasiados frames pendientes
+        if session_data['frames_processed'] % 50 == 0:  # Reset cada 50 frames
+            session_data['frames_processed'] = 0
+        
         session_data['last_detection'] = current_time
+        session_data['frames_processed'] += 1
         
         # Procesar imagen
         frame_base64 = data.get('frame')
@@ -618,18 +661,32 @@ def handle_frame_data(data):
             emit('error', {'message': 'No se recibió frame de video'})
             return
         
-        # Convertir frame a imagen
+        # Obtener información del frame para optimización
+        frame_quality = data.get('quality', 'good')
+        frame_timestamp = data.get('timestamp', current_time)
+        
+        # Convertir frame a imagen con redimensionamiento para optimizar
         image_array = process_image_data(frame_base64)
         if image_array is None:
             emit('error', {'message': 'Error procesando frame'})
             return
+        
+        # Optimizar tamaño de imagen para detección si la calidad es baja
+        if frame_quality in ['fair', 'poor']:
+            height, width = image_array.shape[:2]
+            if width > 640:  # Redimensionar si es muy grande
+                scale = 640 / width
+                new_width = int(width * scale)
+                new_height = int(height * scale)
+                image_array = cv2.resize(image_array, (new_width, new_height))
         
         # Verificar que YOLO esté disponible
         if not yolo_detector:
             emit('error', {'message': 'YOLO no está disponible'})
             return
         
-        # Usar YOLO para detección de objetos
+        # Usar YOLO para detección de objetos (tiempo real - SIN ChatGPT)
+        print(f"🚀 Procesando frame en tiempo real - omitiendo ChatGPT para mayor velocidad")
         detection_result = yolo_detector.detect_objects(image_array)
         
         if detection_result['success']:
@@ -643,7 +700,7 @@ def handle_frame_data(data):
                 'plastic': 'Plástico'
             }
             
-            # Enriquecer detecciones
+            # Enriquecer detecciones - SIN consultas a ChatGPT para tiempo real
             enriched_detections = []
             for detection in detection_result['detections']:
                 # Procesar bbox (YOLO retorna dict, convertir a formato web-friendly)
@@ -668,30 +725,32 @@ def handle_frame_data(data):
                     'bbox_normalized': detection.get('bbox', {}),  # Mantener formato original para frontend
                     'category_name': category_names.get(
                         detection['category'], detection['class']
-                    )
+                    ),
+                    'realtime': True  # Marcar como detección en tiempo real
                 }
                 enriched_detections.append(enriched_detection)
             
-            # Preparar respuesta de detección en tiempo real
+            # Preparar respuesta de detección en tiempo real (SIN ChatGPT)
             realtime_result = {
                 'success': True,
                 'timestamp': float(current_time),
                 'result': {
-                                            'type': 'detection',
-                        'detections': enriched_detections,
-                        'detection_count': int(detection_result['detection_count']),
-                        'inference_time_ms': float(detection_result['inference_time_ms']),
-                        'image_size': {
-                            'width': int(detection_result['image_size'].get('width', 0)),
-                            'height': int(detection_result['image_size'].get('height', 0))
-                        },
-                        'model_type': 'YOLO',
+                    'type': 'detection',
+                    'detections': enriched_detections,
+                    'detection_count': int(detection_result['detection_count']),
+                    'inference_time_ms': float(detection_result['inference_time_ms']),
+                    'image_size': {
+                        'width': int(detection_result['image_size'].get('width', 0)),
+                        'height': int(detection_result['image_size'].get('height', 0))
+                    },
+                    'model_type': 'YOLO',
                     'model_used': 'best.pt',
-                    'realtime': True
+                    'realtime': True,
+                    'chatgpt_skipped': True  # Indicar que ChatGPT fue omitido intencionalmente
                 }
             }
             
-            # Enviar resultado de detección
+            # Enviar resultado de detección inmediatamente
             emit('detection_result', realtime_result)
         else:
             emit('error', {'message': 'Error en detección YOLO de frame'})
