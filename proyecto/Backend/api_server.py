@@ -48,7 +48,7 @@ if YOLO_AVAILABLE:
         print("🎯 Inicializando YOLO Detector...")
         
         class YOLODetector:
-            def __init__(self, model_path='yolotest/runs/detect/garbage_detection_precise/weights/best.pt', confidence_threshold=0.5, device='auto'):
+            def __init__(self, model_path='yolotest/runs/detect/garbage_detection_precise/weights/best.pt', confidence_threshold=0.3, device='auto'):
                 """
                 Inicializa el detector YOLO para el API server
                 
@@ -195,28 +195,22 @@ def process_image_data(image_data):
     Soporta tanto base64 como archivos binarios
     """
     try:
-        # Si es base64, decodificar
+        # Decodificación optimizada usando cv2.imdecode (más rápida que PIL)
         if isinstance(image_data, str):
-            # Remover el prefijo data:image/... si existe
+            # Remover prefijo data:image/...; formato esperado base64
             if image_data.startswith('data:image'):
                 image_data = image_data.split(',')[1]
-            
-            # Decodificar base64
+
             image_bytes = base64.b64decode(image_data)
         else:
-            # Si es un archivo binario directamente
-            image_bytes = image_data
-        
-        # Convertir a PIL Image
-        pil_image = Image.open(io.BytesIO(image_bytes))
-        
-        # Convertir a array numpy (OpenCV format)
-        image_array = np.array(pil_image)
-        
-        # Convertir RGB a BGR para OpenCV
-        if len(image_array.shape) == 3 and image_array.shape[2] == 3:
-            image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
-        
+            image_bytes = image_data  # binario puro
+
+        # Decodificar bytes a imagen numpy usando OpenCV
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        image_array = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if image_array is None:
+            raise ValueError('cv2.imdecode devolvió None')
+         
         return image_array
     
     except Exception as e:
@@ -532,8 +526,8 @@ def handle_connect():
     # Inicializar sesión
     active_streams[session_id] = {
         'active': False,
+        'fps_limit': 5,
         'last_detection': time.time(),
-        'fps_limit': 2,
         'frames_processed': 0,
         'connected': True
     }
@@ -588,6 +582,15 @@ def handle_start_detection(data=None):
         'last_detection': time.time(),
         'frames_processed': 0
     })
+    # Ajustar parámetros de streaming enviados por el cliente
+    if data:
+        if data.get('fps_limit'):
+            active_streams[session_id]['fps_limit'] = int(data['fps_limit'])
+            print(f"🎯 FPS límite ajustado a {active_streams[session_id]['fps_limit']} para cliente: {session_id}")
+        if data.get('confidence_threshold'):
+            new_thr = float(data['confidence_threshold'])
+            yolo_detector.confidence_threshold = max(0.05, min(new_thr, 0.9))
+            print(f"🎯 Umbral de confianza YOLO ajustado a {yolo_detector.confidence_threshold}")
     
     emit('detection_started', {
         'status': 'active',
@@ -640,13 +643,9 @@ def handle_frame_data(data):
         session_data = active_streams[session_id]
         time_since_last = current_time - session_data['last_detection']
         min_interval = 1.0 / session_data['fps_limit']  # Intervalo mínimo entre frames
-        
-                # Adaptative FPS - reducir si hay congestión
-        if session_data['frames_processed'] > 10:
-            if time_since_last < min_interval * 1.5:  # Más conservador si hay mucha actividad
-                return
-        elif time_since_last < min_interval:
-            return  # Saltar este frame para controlar FPS
+        # Simple control de FPS: descartar sólo si llega demasiado rápido
+        if time_since_last < min_interval:
+            return
         
         # Implementar buffer simple - evitar procesar si hay demasiados frames pendientes
         if session_data['frames_processed'] % 50 == 0:  # Reset cada 50 frames

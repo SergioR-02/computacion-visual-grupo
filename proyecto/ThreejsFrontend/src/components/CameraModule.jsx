@@ -239,17 +239,17 @@ const CameraModule = ({ onDetection }) => {
         // Control de FPS adaptativo basado en calidad de conexión
         let fpsInterval;
         switch (connectionQuality) {
-          case 'good':
-            fpsInterval = 400; // 2.5 FPS
-            break;
-          case 'fair':
-            fpsInterval = 600; // 1.67 FPS
-            break;
-          case 'poor':
-            fpsInterval = 1000; // 1 FPS
-            break;
-          default:
-            fpsInterval = 500; // 2 FPS
+            case 'good':
+                fpsInterval = 200; // 5 FPS
+                break;
+            case 'fair':
+                fpsInterval = 300; // 3.3 FPS
+                break;
+            case 'poor':
+                fpsInterval = 500; // 2 FPS
+                break;
+            default:
+                fpsInterval = 300; // 3.3 FPS
         }
         
         // Control de tiempo entre frames
@@ -259,9 +259,9 @@ const CameraModule = ({ onDetection }) => {
         
         // Capturar frame con compresión optimizada
         const imageSrc = webcamRef.current.getScreenshot({
-          width: 640,
-          height: 480,
-          quality: connectionQuality === 'good' ? 0.8 : connectionQuality === 'fair' ? 0.6 : 0.4
+            width: 320,
+            height: 240,
+            quality: connectionQuality === 'good' ? 0.6 : connectionQuality === 'fair' ? 0.4 : 0.2
         });
         
         if (imageSrc) {
@@ -301,13 +301,15 @@ const CameraModule = ({ onDetection }) => {
 
   const startRealtimeDetection = () => {
     if (socketRef.current) {
-      setIsDetecting(true);
-      socketRef.current.emit('start_detection', { 
-        use_detection: detectionMode === 'detection',
-        session_id: currentSessionId
-      });
+        setIsDetecting(true);
+        socketRef.current.emit('start_detection', {
+            use_detection: detectionMode === 'detection',
+            session_id: currentSessionId,
+            fps_limit: connectionQuality === 'good' ? 5 : connectionQuality === 'fair' ? 3 : 2,
+            confidence_threshold: 0.3,
+        });
     }
-  };
+};
 
   const stopRealtimeDetection = () => {
     if (socketRef.current) {
