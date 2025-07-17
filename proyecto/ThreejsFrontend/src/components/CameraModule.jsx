@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
-import { Camera, CameraOff, Activity, AlertCircle, RefreshCw, Zap, Wifi, WifiOff } from 'lucide-react';
+import { Camera, CameraOff, Activity, AlertCircle, RefreshCw, Zap, Wifi, WifiOff, Target, Eye, Settings } from 'lucide-react';
 import { io } from 'socket.io-client';
 
 const CameraModule = ({ onDetection }) => {
@@ -12,10 +12,29 @@ const CameraModule = ({ onDetection }) => {
   const [realtimeMode, setRealtimeMode] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [detectionMode, setDetectionMode] = useState('classification'); // 'classification' o 'detection'
+  const [yoloAvailable, setYoloAvailable] = useState(false);
   
   const webcamRef = useRef(null);
   const socketRef = useRef(null);
   const streamIntervalRef = useRef(null);
+
+  // Verificar disponibilidad de YOLO al montar componente
+  useEffect(() => {
+    checkYoloAvailability();
+  }, []);
+
+  const checkYoloAvailability = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/detect/status');
+      const result = await response.json();
+      setYoloAvailable(result.yolo_available);
+      console.log('🎯 YOLO disponible:', result.yolo_available);
+    } catch (error) {
+      console.log('⚠️ No se pudo verificar YOLO:', error);
+      setYoloAvailable(false);
+    }
+  };
 
   // Inicializar WebSocket
   useEffect(() => {
@@ -66,22 +85,56 @@ const CameraModule = ({ onDetection }) => {
 
       socketRef.current.on('detection_result', (result) => {
         if (result.success) {
-          const formattedResults = [{
-            object: result.result.category_name,
-            category: result.result.category,
-            confidence: result.result.confidence,
-            confidence_percentage: result.result.confidence_percentage,
-            original_class: result.result.original_class,
-            inference_time_ms: result.result.inference_time_ms,
-            advice: result.result.advice,
-            has_chatgpt_advice: result.result.has_chatgpt_advice,
-            backend_result: result.result,
-            realtime: true,
-            timestamp: result.timestamp
-          }];
+          const resultData = result.result;
           
-          setDetectionResult(formattedResults[0]);
-          onDetection(formattedResults);
+          // Manejar resultado según el tipo (clasificación o detección)
+          if (resultData.type === 'detection') {
+            // Resultado de YOLO con múltiples objetos
+            const formattedResults = resultData.detections.map(detection => ({
+              object: detection.category_name,
+              category: detection.category,
+              confidence: detection.confidence,
+              confidence_percentage: detection.confidence_percentage,
+              original_class: detection.class,
+              bbox: detection.bbox,
+              color: detection.color,
+              detection_type: 'yolo',
+              realtime: true,
+              timestamp: result.timestamp
+            }));
+            
+            setDetectionResult({
+              type: 'detection',
+              detections: formattedResults,
+              detection_count: resultData.detection_count,
+              inference_time_ms: resultData.inference_time_ms
+            });
+            
+            onDetection(formattedResults);
+          } else {
+            // Resultado de clasificación tradicional
+            const formattedResults = [{
+              object: resultData.category_name,
+              category: resultData.category,
+              confidence: resultData.confidence,
+              confidence_percentage: resultData.confidence_percentage,
+              original_class: resultData.original_class,
+              inference_time_ms: resultData.inference_time_ms,
+              advice: resultData.advice,
+              has_chatgpt_advice: resultData.has_chatgpt_advice,
+              backend_result: resultData,
+              detection_type: 'classification',
+              realtime: true,
+              timestamp: result.timestamp
+            }];
+            
+            setDetectionResult({
+              type: 'classification',
+              result: formattedResults[0]
+            });
+            
+            onDetection(formattedResults);
+          }
         }
       });
 
@@ -98,24 +151,26 @@ const CameraModule = ({ onDetection }) => {
 
     } catch (error) {
       console.error('❌ Error inicializando WebSocket:', error);
-      setError('Error inicializando conexión en tiempo real');
+      setError(`Error de WebSocket: ${error.message}`);
+      setSocketConnected(false);
     }
   };
 
   const cleanupWebSocket = () => {
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+    }
     if (socketRef.current) {
-      stopFrameStreaming();
       socketRef.current.disconnect();
       socketRef.current = null;
-      setSocketConnected(false);
-      setIsStreaming(false);
     }
+    setSocketConnected(false);
+    setIsStreaming(false);
   };
 
   const startFrameStreaming = () => {
-    if (!webcamRef.current || !socketRef.current || streamIntervalRef.current) return;
+    if (streamIntervalRef.current) return;
 
-    // Enviar frames cada 500ms (2 FPS) para no sobrecargar
     streamIntervalRef.current = setInterval(() => {
       if (webcamRef.current && socketRef.current?.connected) {
         const imageSrc = webcamRef.current.getScreenshot();
@@ -123,7 +178,7 @@ const CameraModule = ({ onDetection }) => {
           socketRef.current.emit('frame_data', { frame: imageSrc });
         }
       }
-    }, 500);
+    }, 500); // 2 FPS
   };
 
   const stopFrameStreaming = () => {
@@ -134,9 +189,11 @@ const CameraModule = ({ onDetection }) => {
   };
 
   const startRealtimeDetection = () => {
-    if (socketRef.current && socketConnected) {
+    if (socketRef.current) {
       setIsDetecting(true);
-      socketRef.current.emit('start_detection');
+      socketRef.current.emit('start_detection', { 
+        use_detection: detectionMode === 'detection' 
+      });
     }
   };
 
@@ -147,62 +204,80 @@ const CameraModule = ({ onDetection }) => {
     }
   };
 
-  // Función original para detección HTTP (una sola vez)
   const performDetection = async () => {
+    if (!webcamRef.current) return;
+
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (!imageSrc) {
+      setError('No se pudo capturar imagen');
+      return;
+    }
+
     try {
-      // Capturar imagen desde la webcam
-      const imageSrc = webcamRef.current.getScreenshot();
+      // Elegir endpoint según el modo
+      const endpoint = detectionMode === 'detection' ? '/detect' : '/classify';
+      const url = `http://localhost:5000${endpoint}`;
       
-      if (!imageSrc) {
-        console.error('No se pudo capturar la imagen');
-        return;
-      }
-      
-      // Enviar al backend
-      const response = await fetch('http://localhost:5000/classify', {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          image: imageSrc
-        })
+        body: JSON.stringify({ image: imageSrc })
       });
 
       const result = await response.json();
       
       if (result.success) {
-        // Formatear resultado para el callback onDetection con toda la información del backend
-        const formattedResults = [{
-          object: result.result.category_name,
-          category: result.result.category,
-          confidence: result.result.confidence,
-          confidence_percentage: result.result.confidence_percentage,
-          original_class: result.result.original_class,
-          inference_time_ms: result.result.inference_time_ms,
-          advice: result.result.advice,
-          has_chatgpt_advice: result.result.has_chatgpt_advice,
-          backend_result: result.result,
-          realtime: false
-        }];
-        
-        setDetectionResult(formattedResults[0]);
-        onDetection(formattedResults);
+        if (detectionMode === 'detection') {
+          // Manejar resultado de YOLO
+          const formattedResults = result.result.detections.map(detection => ({
+            object: detection.category_name,
+            category: detection.category,
+            confidence: detection.confidence,
+            confidence_percentage: detection.confidence_percentage,
+            original_class: detection.class,
+            bbox: detection.bbox,
+            color: detection.color,
+            detection_type: 'yolo'
+          }));
+          
+          setDetectionResult({
+            type: 'detection',
+            detections: formattedResults,
+            detection_count: result.result.detection_count,
+            inference_time_ms: result.result.inference_time_ms
+          });
+          
+          onDetection(formattedResults);
+        } else {
+          // Manejar resultado de clasificación
+          const formattedResults = [{
+            object: result.result.category_name,
+            category: result.result.category,
+            confidence: result.result.confidence,
+            confidence_percentage: result.result.confidence_percentage,
+            original_class: result.result.original_class,
+            inference_time_ms: result.result.inference_time_ms,
+            advice: result.result.advice,
+            has_chatgpt_advice: result.result.has_chatgpt_advice,
+            backend_result: result.result,
+            detection_type: 'classification'
+          }];
+          
+          setDetectionResult({
+            type: 'classification',
+            result: formattedResults[0]
+          });
+          
+          onDetection(formattedResults);
+        }
       } else {
-        console.error('Error del backend:', result.error);
-        // Fallback con datos mock si falla
-        const mockResults = [
-          { object: 'Error de conexión', category: 'unknown', confidence: 0.0 }
-        ];
-        onDetection(mockResults);
+        setError(result.error || 'Error en el análisis');
       }
     } catch (error) {
       console.error('Error al conectar con el servidor:', error);
-      // Fallback con datos mock si falla
-      const mockResults = [
-        { object: 'Error de conexión', category: 'unknown', confidence: 0.0 }
-      ];
-      onDetection(mockResults);
+      setError('Error de conexión con el servidor');
     }
   };
 
@@ -253,10 +328,9 @@ const CameraModule = ({ onDetection }) => {
   // Limpiar detección y permitir nueva
   const clearDetection = () => {
     setDetectionResult(null);
-    if (realtimeMode) {
+    setIsDetecting(false);
+    if (realtimeMode && isStreaming) {
       stopRealtimeDetection();
-    } else {
-      setIsDetecting(false);
     }
   };
 
@@ -277,6 +351,14 @@ const CameraModule = ({ onDetection }) => {
     setDetectionResult(null);
     setIsDetecting(false);
   };
+
+  // Alternar modo de detección (clasificación/detección)
+  const toggleDetectionMode = () => {
+    setDetectionMode(prev => prev === 'classification' ? 'detection' : 'classification');
+    setDetectionResult(null);
+    setIsDetecting(false);
+  };
+
   // Mostrar error si existe
   if (error) {
     return (
@@ -357,16 +439,74 @@ const CameraModule = ({ onDetection }) => {
         {/* Resultado de la detección */}
         {detectionResult && (
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-2 lg:top-4 left-2 lg:left-4 bg-emerald-500/90 text-white px-2 lg:px-3 py-1 rounded-lg text-xs lg:text-sm font-medium">
-              {detectionResult.object} ({Math.round(detectionResult.confidence * 100)}%)
-            </div>
-            <div className="absolute top-1/4 left-1/4 w-24 lg:w-32 h-32 lg:h-40 border-2 border-emerald-400 rounded"></div>
-            
-            {detectionResult.has_chatgpt_advice && (
-              <div className="absolute top-2 lg:top-4 right-2 lg:right-4 flex items-center space-x-1 bg-blue-500/90 text-white px-2 py-1 rounded-lg">
-                <span className="text-xs">🤖</span>
-                <span className="text-xs font-medium">IA</span>
-              </div>
+            {detectionResult.type === 'detection' ? (
+              <>
+                {/* Header para YOLO con múltiples objetos */}
+                <div className="absolute top-2 lg:top-4 left-2 lg:left-4 bg-emerald-500/90 text-white px-2 lg:px-3 py-1 rounded-lg text-xs lg:text-sm font-medium">
+                  🎯 {detectionResult.detection_count} objetos detectados
+                </div>
+                
+                {/* Tiempo de inferencia */}
+                <div className="absolute top-2 lg:top-4 right-2 lg:right-4 bg-blue-500/90 text-white px-2 py-1 rounded-lg text-xs">
+                  {detectionResult.inference_time_ms}ms
+                </div>
+                
+                {/* Bounding boxes para cada objeto detectado */}
+                {detectionResult.detections.map((detection, index) => {
+                  const bbox = detection.bbox;
+                  if (!bbox) return null;
+                  
+                  // Convertir coordenadas normalizadas a pixeles
+                  const containerRect = webcamRef.current?.video;
+                  if (!containerRect) return null;
+                  
+                  const videoWidth = containerRect.videoWidth || 640;
+                  const videoHeight = containerRect.videoHeight || 480;
+                  
+                  const x = bbox.x1 * 100; // Porcentaje
+                  const y = bbox.y1 * 100; // Porcentaje
+                  const width = bbox.width * 100; // Porcentaje
+                  const height = bbox.height * 100; // Porcentaje
+                  
+                  return (
+                    <div
+                      key={index}
+                      className="absolute border-2 rounded"
+                      style={{
+                        left: `${x}%`,
+                        top: `${y}%`,
+                        width: `${width}%`,
+                        height: `${height}%`,
+                        borderColor: detection.color || '#10B981',
+                        boxShadow: `0 0 10px ${detection.color || '#10B981'}40`
+                      }}
+                    >
+                      {/* Etiqueta del objeto */}
+                      <div 
+                        className="absolute -top-6 left-0 px-2 py-1 rounded text-xs font-medium text-white"
+                        style={{ backgroundColor: detection.color || '#10B981' }}
+                      >
+                        {detection.object} ({detection.confidence_percentage}%)
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <>
+                {/* Visualización para clasificación tradicional */}
+                <div className="absolute top-2 lg:top-4 left-2 lg:left-4 bg-emerald-500/90 text-white px-2 lg:px-3 py-1 rounded-lg text-xs lg:text-sm font-medium">
+                  📊 {detectionResult.result.object} ({Math.round(detectionResult.result.confidence * 100)}%)
+                </div>
+                <div className="absolute top-1/4 left-1/4 w-24 lg:w-32 h-32 lg:h-40 border-2 border-emerald-400 rounded"></div>
+                
+                {detectionResult.result.has_chatgpt_advice && (
+                  <div className="absolute top-2 lg:top-4 right-2 lg:right-4 flex items-center space-x-1 bg-blue-500/90 text-white px-2 py-1 rounded-lg">
+                    <span className="text-xs">🤖</span>
+                    <span className="text-xs font-medium">IA</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -396,17 +536,43 @@ const CameraModule = ({ onDetection }) => {
         )}
       </div>
 
+      {/* Selección de modo de detección */}
+      <div className="flex justify-center space-x-2 mb-2">
+        <button
+          onClick={toggleDetectionMode}
+          className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-300 flex items-center space-x-1 ${
+            detectionMode === 'detection' 
+              ? 'bg-blue-500 text-white shadow-lg'
+              : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+          }`}
+        >
+          {detectionMode === 'detection' ? <Target className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+          <span>{detectionMode === 'detection' ? 'Detección YOLO' : 'Clasificación'}</span>
+        </button>
+        
+        {yoloAvailable && (
+          <div className={`px-2 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1 ${
+            yoloAvailable ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+          }`}>
+            <div className={`h-2 w-2 rounded-full ${yoloAvailable ? 'bg-green-400' : 'bg-red-400'}`}></div>
+            <span>{yoloAvailable ? 'YOLO Disponible' : 'YOLO No Disponible'}</span>
+          </div>
+        )}
+      </div>
+
       {/* Controles de detección según el modo */}
       {realtimeMode ? (
-        <div className="flex justify-center space-x-2 mb-3">
+                  <div className="flex justify-center space-x-2 mb-3">
           {!isStreaming ? (
             <button
               onClick={startRealtimeDetection}
-              disabled={!socketConnected}
+              disabled={!socketConnected || (detectionMode === 'detection' && !yoloAvailable)}
               className="bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center space-x-2 text-sm"
             >
-              <Zap className="h-4 w-4" />
-              <span>Iniciar Detección Continua</span>
+              {detectionMode === 'detection' ? <Target className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
+              <span>
+                {detectionMode === 'detection' ? 'Iniciar Detección YOLO' : 'Iniciar Clasificación Continua'}
+              </span>
             </button>
           ) : (
             <button
@@ -420,15 +586,30 @@ const CameraModule = ({ onDetection }) => {
         </div>
       ) : (
         !detectionResult && !isDetecting && (
-          <div className="flex justify-center mb-3">
-            <button
-              onClick={performDetection}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center space-x-2 text-sm"
-            >
-              <Camera className="h-4 w-4" />
-              <span>Capturar y Analizar</span>
-            </button>
-          </div>
+          <>
+            <div className="flex justify-center mb-3">
+              <button
+                onClick={performDetection}
+                disabled={detectionMode === 'detection' && !yoloAvailable}
+                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center space-x-2 text-sm"
+              >
+                {detectionMode === 'detection' ? <Target className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
+                <span>
+                  {detectionMode === 'detection' ? 'Detectar Objetos' : 'Capturar y Clasificar'}
+                </span>
+              </button>
+            </div>
+            
+            {/* Mensaje de YOLO no disponible */}
+            {detectionMode === 'detection' && !yoloAvailable && (
+              <div className="text-center mb-3">
+                <div className="inline-flex items-center space-x-2 bg-red-500/20 text-red-300 px-3 py-1.5 rounded-lg text-xs">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>YOLO no disponible - Revisa el servidor</span>
+                </div>
+              </div>
+            )}
+          </>
         )
       )}
 
