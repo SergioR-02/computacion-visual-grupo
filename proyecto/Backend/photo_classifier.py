@@ -12,27 +12,22 @@ import os
 from datetime import datetime
 import requests  # para descargar imágenes desde URLs
 
-# Importar load_model de forma compatible
+# Importar módulos de Keras de forma compatible
 try:
-    from tensorflow.keras.models import load_model
+    from tensorflow.keras.models import load_model, Model
+    from tensorflow.keras.applications import MobileNetV2
+    from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 except ImportError:
-    from keras.models import load_model
+    from keras.models import load_model, Model
+    from keras.applications import MobileNetV2
+    from keras.layers import Dense, GlobalAveragePooling2D, Dropout
 
 class PhotoClassifier:
-    def __init__(self, model_path='best_garbage_model.h5', labels_path='class_labels.json'):
+    def __init__(self, model_path='garbage_classifier_final.h5', labels_path='class_labels.json'):
         """Inicializar clasificador de fotos"""
         print("🚀 Cargando modelo especializado de basura...")
         
-        # Cargar modelo especializado de basura
-        try:
-            self.model = load_model(model_path)
-            print(f"✅ Modelo cargado: {model_path}")
-        except Exception as e:
-            print(f"❌ Error cargando modelo: {e}")
-            print("🏋️ Ejecuta primero train_model.py para entrenar el modelo")
-            exit(1)
-        
-        # Cargar etiquetas
+        # Cargar etiquetas PRIMERO (necesarias para crear modelo)
         try:
             with open(labels_path, 'r') as f:
                 self.class_labels = json.load(f)
@@ -40,6 +35,34 @@ class PhotoClassifier:
         except Exception as e:
             print(f"❌ Error cargando etiquetas: {e}")
             exit(1)
+        
+        # Cargar modelo especializado de basura
+        try:
+            # Intenta cargar con opciones de compatibilidad
+            self.model = load_model(model_path, compile=False)
+            
+            # Recompilar el modelo con la versión actual de TensorFlow
+            self.model.compile(
+                optimizer='adam',
+                loss='categorical_crossentropy',
+                metrics=['accuracy']
+            )
+            print(f"✅ Modelo cargado con compatibilidad: {model_path}")
+        except Exception as e:
+            print(f"❌ Error cargando modelo: {e}")
+            print("🔧 Creando modelo base nuevo...")
+            
+            # Crear un modelo nuevo compatible
+            try:
+                print("🔄 Creando modelo desde cero...")
+                self.model = self._create_base_model()
+                print("✅ Modelo base nuevo creado (necesita entrenamiento)")
+                print("⚠️ NOTA: Este modelo no tiene pesos entrenados, dará predicciones aleatorias")
+            except Exception as e2:
+                print(f"❌ Error creando modelo base: {e2}")
+                print("🏋️ Necesitas reentrenar el modelo con la versión actual de TensorFlow")
+                print("💡 Ejecuta: python train_model.py")
+                exit(1)
         
         # Configuración
         self.img_size = 224
@@ -51,6 +74,39 @@ class PhotoClassifier:
             os.makedirs(self.output_dir)
         
         print("✅ Modelo cargado - ¡Listo para clasificar fotos!")
+    
+    def _create_base_model(self):
+        """Crear modelo base con la misma arquitectura que se usó en el entrenamiento"""
+        
+        # Cargar MobileNetV2 pre-entrenado (misma configuración que train_model.py)
+        base_model = MobileNetV2(
+            weights='imagenet',
+            include_top=False,
+            input_shape=(224, 224, 3)
+        )
+        
+        # Recrear la misma arquitectura personalizada  
+        inputs = tf.keras.layers.Input(shape=(224, 224, 3))
+        x = base_model(inputs, training=False)
+        x = GlobalAveragePooling2D()(x)
+        x = Dropout(0.5)(x)
+        x = Dense(128, activation='relu')(x)
+        x = Dropout(0.3)(x)
+        
+        # Número de clases basado en las etiquetas cargadas
+        num_classes = len(self.class_labels)
+        outputs = Dense(num_classes, activation='softmax')(x)
+        
+        model = Model(inputs, outputs)
+        
+        # Compilar el modelo
+        model.compile(
+            optimizer='adam',
+            loss='categorical_crossentropy',
+            metrics=['accuracy']
+        )
+        
+        return model
     
     def preprocess_image(self, image):
         """Preprocesar imagen para el modelo especializado"""
@@ -96,6 +152,70 @@ class PhotoClassifier:
             'original_class': class_name,  # Ya no hay mapeo, es directo
             'all_predictions': all_predictions
         }
+    
+    def classify_image_realtime(self, image):
+        """
+        Clasificar imagen optimizada para tiempo real
+        Mantiene la precisión pero optimiza velocidad de procesamiento
+        """
+        # Preprocesar con optimizaciones para tiempo real
+        processed_image = self.preprocess_image_realtime(image)
+        
+        # Predicción optimizada
+        start_time = time.time()
+        predictions = self.model.predict(processed_image, verbose=0)
+        inference_time = (time.time() - start_time) * 1000  # en ms
+        
+        # Obtener clase predicha y confianza
+        predicted_class_idx = np.argmax(predictions[0])
+        confidence = predictions[0][predicted_class_idx]
+        confidence_percentage = round(confidence * 100, 1)
+        
+        # Obtener nombre de la clase
+        class_name = self.class_labels[str(predicted_class_idx)]
+        
+        # Mapear a categorías para el frontend
+        category_mapping = {
+            'battery': 'battery',
+            'biological': 'biological', 
+            'brown-glass': 'glass',
+            'cardboard': 'cardboard',
+            'clothes': 'clothes',
+            'green-glass': 'glass',
+            'metal': 'metal',
+            'paper': 'paper',
+            'plastic': 'plastic',
+            'shoes': 'shoes',
+            'trash': 'trash',
+            'white-glass': 'glass'
+        }
+        
+        category = category_mapping.get(class_name, 'trash')
+        
+        return {
+            'category': category,
+            'garbage_class': class_name,
+            'confidence': confidence,
+            'confidence_percentage': confidence_percentage,
+            'inference_time_ms': round(inference_time, 1),
+            'original_class': class_name
+        }
+    
+    def preprocess_image_realtime(self, image):
+        """
+        Preprocesamiento optimizado para tiempo real
+        Mantiene calidad pero mejora velocidad
+        """
+        # Redimensionar eficientemente
+        resized = cv2.resize(image, (self.img_size, self.img_size), interpolation=cv2.INTER_LINEAR)
+        
+        # Normalizar de forma optimizada
+        normalized = resized.astype(np.float32) / 255.0
+        
+        # Añadir dimensión batch
+        batch = np.expand_dims(normalized, axis=0)
+        
+        return batch
     
     def add_text_to_image(self, image, result):
         """Añadir información de clasificación a la imagen"""
