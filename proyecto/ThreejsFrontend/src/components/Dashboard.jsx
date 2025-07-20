@@ -8,17 +8,42 @@ const Dashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [activeModule, setActiveModule] = useState('camera');
 
+  // Función para determinar qué caneca usar según la categoría detectada
+  const getTrashCanType = (category) => {
+    const whiteCanCategories = ['plastic', 'glass', 'metal', 'paper', 'cardboard'];
+    const greenCanCategories = ['biological'];
+    
+    if (whiteCanCategories.includes(category)) {
+      return 'trash_white';
+    } else if (greenCanCategories.includes(category)) {
+      return 'trash_green';
+    }
+    return null; // No cambiar si no coincide
+  };
+
   const handleDetection = (results) => {
     console.log('🔍 Resultados de detección recibidos:', results);
     setDetectionResults(results);
     if (results.length > 0) {
-      setSelectedCategory(results[0].category);
+      const detectedCategory = results[0].category;
+      
+      // 🆕 AUTO-SELECCIONAR CANECA SEGÚN CATEGORÍA DETECTADA
+      const recommendedTrashCan = getTrashCanType(detectedCategory);
+      
+      if (recommendedTrashCan) {
+        setSelectedCategory(recommendedTrashCan);
+        console.log(`🗑️ Auto-seleccionando caneca ${recommendedTrashCan} para categoría: ${detectedCategory}`);
+      } else {
+        setSelectedCategory(detectedCategory); // Fallback al comportamiento anterior
+      }
+      
       console.log('📋 Información del backend:', {
         object: results[0].object,
         category: results[0].category,
         confidence: results[0].confidence,
         advice: results[0].advice,
-        has_chatgpt_advice: results[0].has_chatgpt_advice
+        has_chatgpt_advice: results[0].has_chatgpt_advice,
+        recommended_trash_can: recommendedTrashCan
       });
     }
   };
@@ -32,86 +57,6 @@ const Dashboard = () => {
           <p className="text-gray-600 text-sm lg:text-base">
             Utiliza nuestras herramientas de IA para identificar y aprender sobre el reciclaje
           </p>
-          
-          {/* Botones de prueba para canecas de basura */}
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm font-medium text-blue-900 mb-2">Prueba modelos 3D de canecas:</p>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setSelectedCategory('trash_gray')}
-                className="px-3 py-1 bg-gray-500 text-white rounded-md text-sm hover:bg-gray-600 transition-colors"
-              >
-                Caneca Gris
-              </button>
-              <button
-                onClick={() => setSelectedCategory('trash_white')}
-                className="px-3 py-1 bg-gray-100 text-gray-800 border border-gray-300 rounded-md text-sm hover:bg-gray-200 transition-colors"
-              >
-                Caneca Blanca
-              </button>
-              <button
-                onClick={() => setSelectedCategory('trash_green')}
-                className="px-3 py-1 bg-green-500 text-white rounded-md text-sm hover:bg-green-600 transition-colors"
-              >
-                Caneca Verde
-              </button>
-              <button
-                onClick={() => setSelectedCategory('')}
-                className="px-3 py-1 bg-red-500 text-white rounded-md text-sm hover:bg-red-600 transition-colors"
-              >
-                Limpiar
-              </button>
-            </div>
-            
-            <div className="mt-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
-              <p className="text-sm font-medium text-orange-900 mb-2">Prueba datos del backend:</p>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => {
-                    const mockResultWithAdvice = [{
-                      object: 'Orgánico',
-                      category: 'biological',
-                      confidence: 0.89,
-                      confidence_percentage: 89,
-                      original_class: 'banana_peel',
-                      inference_time_ms: 45.2,
-                      has_chatgpt_advice: true,
-                      advice: {
-                        consejos: 'Separa los residuos orgánicos sin bolsas plásticas. Evita incluir carnes, huesos, aceites y productos lácteos. Deposita en contenedor marrón para compostaje.',
-                        impacto: 'Compostar residuos orgánicos reduce las emisiones de metano en vertederos hasta en un 25%. Genera fertilizante natural que mejora la calidad del suelo.',
-                        datos: 'Los residuos orgánicos representan el 40% de la basura doméstica. El compostaje puede reducir hasta 30% el volumen total de residuos.',
-                        alternativas: 'Haz compost casero, usa un biodigestor, planifica las comidas para evitar desperdicio, cultiva tus propios alimentos orgánicos.'
-                      }
-                    }];
-                    handleDetection(mockResultWithAdvice);
-                  }}
-                  className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition-colors"
-                >
-                  Orgánico con IA
-                </button>
-                
-                <button
-                  onClick={() => {
-                    const mockResultWithoutAdvice = [{
-                      object: 'Orgánico',
-                      category: 'biological',
-                      confidence: 0.11,
-                      confidence_percentage: 11,
-                      original_class: 'food_waste',
-                      inference_time_ms: 23.8,
-                      has_chatgpt_advice: false,
-                      advice: null
-                    }];
-                    handleDetection(mockResultWithoutAdvice);
-                  }}
-                  className="px-3 py-1 bg-yellow-600 text-white rounded-md text-sm hover:bg-yellow-700 transition-colors"
-                >
-                  Orgánico sin IA
-                </button>
-              </div>
-            </div>
-            <p className="text-xs text-blue-700 mt-1">Categoría actual: {selectedCategory || 'Ninguna'}</p>
-          </div>
         </div>        {/* Layout responsivo - stack en móvil, grid en desktop */}
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-4 min-h-[300px] h-auto max-h-[650px] lg:h-auto lg:max-h-[650px]">{/* Panel Izquierdo - 3D Viewer - Se muestra debajo en móvil */}          <div className="order-3 lg:order-1 lg:col-span-3">
             <div className="h-40 lg:h-full max-h-[650px]">
@@ -219,22 +164,33 @@ const Dashboard = () => {
                   {/* Contenedor recomendado */}
                   <div className="bg-slate-700/50 rounded-lg p-2 border-l-4 border-emerald-400">
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-emerald-400 text-sm">🗂️</span>
-                      <span className="font-semibold text-xs text-emerald-300">Contenedor Correcto</span>
+                      <div className="h-2 w-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                      <span className="font-semibold text-xs text-emerald-300">Contenedor Recomendado</span>
+                      <span className="text-xs text-emerald-200">(Auto-seleccionado)</span>
                     </div>
                     <p className="text-slate-200 text-xs font-medium">
-                      {detectionResults[0].category === 'plastic' && 'Contenedor AMARILLO - Envases de plástico'}
-                      {detectionResults[0].category === 'glass' && 'Contenedor VERDE - Envases de vidrio'}
-                      {detectionResults[0].category === 'paper' && 'Contenedor AZUL - Papel y cartón'}
-                      {detectionResults[0].category === 'cardboard' && 'Contenedor AZUL - Papel y cartón'}
-                      {detectionResults[0].category === 'metal' && 'Contenedor AMARILLO - Envases metálicos'}
-                      {detectionResults[0].category === 'biological' && 'Contenedor MARRÓN - Residuos orgánicos'}
-                      {detectionResults[0].category === 'battery' && 'Punto SIGRE - Pilas y baterías'}
-                      {detectionResults[0].category === 'clothes' && 'Contenedor TEXTIL - Ropa y calzado'}
-                      {detectionResults[0].category === 'shoes' && 'Contenedor TEXTIL - Ropa y calzado'}
-                      {detectionResults[0].category === 'trash' && 'Contenedor GRIS - Residuos generales'}
-                      {detectionResults[0].category === 'unknown' && 'Consultar normativa local'}
+                      {detectionResults[0].category === 'plastic' && '🗑️ Contenedor BLANCO - Envases de plástico'}
+                      {detectionResults[0].category === 'glass' && '🗑️ Contenedor BLANCO - Envases de vidrio'}
+                      {detectionResults[0].category === 'paper' && '🗑️ Contenedor BLANCO - Papel'}
+                      {detectionResults[0].category === 'cardboard' && '🗑️ Contenedor BLANCO - Cartón'}
+                      {detectionResults[0].category === 'metal' && '🗑️ Contenedor BLANCO - Envases metálicos'}
+                      {detectionResults[0].category === 'biological' && '🗑️ Contenedor VERDE - Residuos orgánicos'}
+                      {detectionResults[0].category === 'battery' && 'Punto SIGRE - Pilas y baterías (No automático)'}
+                      {detectionResults[0].category === 'clothes' && 'Contenedor TEXTIL - Ropa y calzado (No automático)'}
+                      {detectionResults[0].category === 'shoes' && 'Contenedor TEXTIL - Ropa y calzado (No automático)'}
+                      {detectionResults[0].category === 'trash' && 'Contenedor GRIS - Residuos generales (No automático)'}
+                      {detectionResults[0].category === 'unknown' && 'Consultar normativa local (No automático)'}
                     </p>
+                    
+                    {/* Indicador de caneca 3D seleccionada */}
+                    {getTrashCanType(detectionResults[0].category) && (
+                      <div className="mt-2 flex items-center space-x-2 bg-emerald-500/20 rounded-lg px-2 py-1">
+                        <span className="text-emerald-400 text-xs">🎯</span>
+                        <span className="text-emerald-300 text-xs font-medium">
+                          Modelo 3D: {getTrashCanType(detectionResults[0].category) === 'trash_white' ? 'Caneca Blanca' : 'Caneca Verde'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Instrucciones de preparación */}
@@ -256,12 +212,12 @@ const Dashboard = () => {
                       ) : (
                         <div className="space-y-1">
                           <p className="leading-relaxed text-slate-400">
-                            {detectionResults[0].category === 'biological' && 'Separa residuos orgánicos limpios. Evita carnes, huesos y aceites. Deposita en contenedor marrón.'}
-                            {detectionResults[0].category === 'plastic' && 'Limpia el envase, retira etiquetas y deposita en contenedor amarillo.'}
-                            {detectionResults[0].category === 'glass' && 'Retira tapas, enjuaga y deposita en contenedor verde.'}
-                            {detectionResults[0].category === 'paper' && 'Separa papeles limpios, retira grapas y deposita en contenedor azul.'}
-                            {detectionResults[0].category === 'cardboard' && 'Dobla cajas, retira cintas y deposita en contenedor azul.'}
-                            {detectionResults[0].category === 'metal' && 'Vacía completamente, enjuaga y deposita en contenedor amarillo.'}
+                            {detectionResults[0].category === 'biological' && 'Separa residuos orgánicos limpios. Evita carnes, huesos y aceites. Deposita en contenedor verde.'}
+                            {detectionResults[0].category === 'plastic' && 'Limpia el envase, retira etiquetas y deposita en contenedor blanco.'}
+                            {detectionResults[0].category === 'glass' && 'Retira tapas, enjuaga y deposita en contenedor blanco.'}
+                            {detectionResults[0].category === 'paper' && 'Separa papeles limpios, retira grapas y deposita en contenedor blanco.'}
+                            {detectionResults[0].category === 'cardboard' && 'Dobla cajas, retira cintas y deposita en contenedor blanco.'}
+                            {detectionResults[0].category === 'metal' && 'Vacía completamente, enjuaga y deposita en contenedor blanco.'}
                             {detectionResults[0].category === 'battery' && 'Lleva a punto SIGRE o punto limpio. NO deposites en contenedores comunes.'}
                             {detectionResults[0].category === 'clothes' && 'Dona si está en buen estado o deposita en contenedor textil.'}
                             {detectionResults[0].category === 'shoes' && 'Dona si están en buen estado o deposita en contenedor textil.'}
