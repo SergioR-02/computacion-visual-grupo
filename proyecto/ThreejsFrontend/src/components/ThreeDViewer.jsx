@@ -62,7 +62,7 @@ const ThreeDViewer = ({ category }) => {
       0.1,
       1000
     );
-    camera.position.set(1, 1, 9); // Posición ligeramente elevada para mejor vista
+    camera.position.set(2, 2, 3); // Posición más cercana para mejor visualización
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
@@ -73,13 +73,20 @@ const ThreeDViewer = ({ category }) => {
     mountRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Luz ambiente más intensa
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 5, 5);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Luz direccional más intensa
+    directionalLight.position.set(3, 4, 3); // Posición optimizada
     directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
     scene.add(directionalLight);
+
+    // Agregar una segunda luz para mejor iluminación
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    fillLight.position.set(-3, 2, -3);
+    scene.add(fillLight);
 
     const groundGeometry = new THREE.PlaneGeometry(5, 5);
     const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.1 });
@@ -119,16 +126,18 @@ const ThreeDViewer = ({ category }) => {
               const center = box.getCenter(new THREE.Vector3());
               const size = box.getSize(new THREE.Vector3());
               
-              // Centrar el objeto
+              // Centrar el objeto horizontalmente
               object.position.x = -center.x;
-              object.position.y = -center.y;
               object.position.z = -center.z;
               
               // Ajustar escala basada en el tamaño del modelo
               const maxDimension = Math.max(size.x, size.y, size.z);
-              const targetSize = 7; // Tamaño objetivo en unidades de Three.js
+              const targetSize = 2.5; // Tamaño objetivo más pequeño para mejor visualización
               const scale = targetSize / maxDimension;
               object.scale.setScalar(scale);
+              
+              // Posicionar el modelo en el suelo (ajustado para la nueva escala)
+              object.position.y = -center.y * scale - 0.5;
               
               // Habilitar sombras para todos los meshes del objeto
               object.traverse((child) => {
@@ -141,6 +150,8 @@ const ThreeDViewer = ({ category }) => {
               sceneRef.current.add(object);
               meshRef.current = object;
               setIsLoading(false);
+              
+              console.log(`Modelo cargado - Tamaño original: ${size.x.toFixed(2)}x${size.y.toFixed(2)}x${size.z.toFixed(2)}, Escala aplicada: ${scale.toFixed(3)}`);
             },
             (progress) => {
               console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
@@ -198,20 +209,20 @@ const ThreeDViewer = ({ category }) => {
 
   const resetView = () => {
     if (cameraRef.current) {
-      cameraRef.current.position.set(0, 1, 4);
+      cameraRef.current.position.set(2, 2, 3); // Posición consistente con la inicial
       cameraRef.current.lookAt(0, 0, 0);
     }
   };
 
   const zoomIn = () => {
     if (cameraRef.current) {
-      cameraRef.current.position.z = Math.max(cameraRef.current.position.z - 0.5, 1);
+      cameraRef.current.position.z = Math.max(cameraRef.current.position.z - 0.3, 0.8); // Permitir zoom más cercano
     }
   };
 
   const zoomOut = () => {
     if (cameraRef.current) {
-      cameraRef.current.position.z = Math.min(cameraRef.current.position.z + 0.5, 10);
+      cameraRef.current.position.z = Math.min(cameraRef.current.position.z + 0.3, 8); // Reducir zoom máximo
     }
   };
 
@@ -243,6 +254,21 @@ const ThreeDViewer = ({ category }) => {
   useEffect(() => {
     if (category) {
       createModel(category);
+      // Forzar una redimensión después de cargar el modelo
+      setTimeout(() => {
+        if (mountRef.current && cameraRef.current && rendererRef.current) {
+          const width = mountRef.current.clientWidth;
+          const height = mountRef.current.clientHeight;
+          
+          cameraRef.current.aspect = width / height;
+          cameraRef.current.updateProjectionMatrix();
+          rendererRef.current.setSize(width, height);
+          
+          // Reiniciar la posición de la cámara para el nuevo modelo
+          cameraRef.current.position.set(2, 2, 3);
+          cameraRef.current.lookAt(0, 0, 0);
+        }
+      }, 100);
     }
   }, [category]);
   return (
