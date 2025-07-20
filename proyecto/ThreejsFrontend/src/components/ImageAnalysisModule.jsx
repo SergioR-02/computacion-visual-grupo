@@ -289,7 +289,6 @@ const ImageAnalysisModule = ({ onDetection }) => {
                     <div className="absolute top-2 left-2 bg-green-500/90 text-white px-2 py-1 rounded-md text-xs font-medium">
                       📊 {analysisResult.category_name} ({analysisResult.confidence_percentage}%)
                     </div>
-                    <div className="absolute top-1/4 left-1/4 w-16 lg:w-20 h-20 lg:h-24 border-2 border-green-400 rounded"></div>
                   </>
                 )}
               </div>
